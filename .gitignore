@@ -1,0 +1,99 @@
+# Directories #
+build/
+
+bin/
+target/
+CVS/
+.cvsignore
+.settings
+minvu/
+logs/
+amazon/
+/jars/
+.idea/
+.classpath
+.project
+
+*.log
+# OS Files #
+.DS_Store
+
+*.class
+
+# Package Files #
+*.jar
+*.war
+*.ear
+*.db
+
+######################
+# Windows
+######################
+
+# Windows image file caches
+Thumbs.db
+
+# Folder config file
+Desktop.ini
+
+######################
+# OSX
+######################
+
+.DS_Store
+.svn
+
+# Thumbnails
+._*
+
+# Files that might appear on external disk
+.Spotlight-V100
+.Trashes
+
+######################
+# Eclipse
+######################
+
+*.pydevproject
+#.project
+#.classpath
+.metadata
+bin/**
+tmp/**
+tmp/**/*
+*.tmp
+*.bak
+*.swp
+*~.nib
+local.properties
+#.settings/
+.loadpath
+/src/main/resources/rebel.xml
+# External tool builders
+.externalToolBuilders/
+
+# Locally stored "Eclipse launch configurations"
+#*.launch
+
+# CDT-specific
+.cproject
+
+# PDT-specific
+.buildpath
+
+# Vagrant specific
+.vagrant/
+
+# Talend Open Studio specific
+*.screenshot
+/temp
+code/routines/system/
+
+#Database backup files
+*.backup
+
+*.docx
+.tern-project
+kk.txt
+local.jar
+*.pptx
