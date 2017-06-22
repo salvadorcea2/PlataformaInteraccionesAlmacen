@@ -20,12 +20,13 @@ object Conexion {
     val usrPostgres = config.getString("servidor.postgres.usuario")
     val passPostgres = config.getString("servidor.postgres.password")
     val dbPostgres = config.getString("servidor.postgres.basedatos")
+    println(hostPostgres)
     val configuration = URLParser.parse(s"jdbc:postgresql://$hostPostgres/$dbPostgres?user=$usrPostgres&password=$passPostgres")
     new PostgreSQLConnection(configuration)
   }
 
   def conectar()(implicit conexion : Connection)  : Connection = {
-     Await.result(conexion.connect, 5 seconds)
+     Await.result(conexion.connect, 30 seconds)
      conexion
   }
 

@@ -66,7 +66,7 @@ class TestRecepcion extends FlatSpec {
       val future: Future[QueryResult] = ejecutarSQL("recepcion.insert.sql", Array(receptor, "RECEPCIONADO", archivo.getAbsolutePath))
       val mapResult:Future[Int] = future.map(qr => qr.rows.get(0)("id").asInstanceOf[Int])
 
-        val recepcion = Await.result(mapResult, 5 seconds)
+        val recepcion = Await.result(mapResult, 30 seconds)
         println(s" ${archivo.getName} ${recepcion}")
         val source = Source.fromFile(archivo, "ISO-8859-1")
         for (linea <- source.getLines) {
@@ -95,13 +95,13 @@ class TestRecepcion extends FlatSpec {
 
               val future2: Future[QueryResult] = ejecutarSQL("tramite.insert.sql", Array(recepcion, tipoTramite, fecha))
               val mapResult2: Future[Int] = future2.map(qr => qr.rows.get(0)("id").asInstanceOf[Int])
-              val tramite = Await.result(mapResult2, 5 seconds)
+              val tramite = Await.result(mapResult2, 30 seconds)
               println(s" Tramite ${tramite}")
 
               val future3: Future[QueryResult] = ejecutarSQL("interaccion.insert.sql", Array(recepcion, fecha, tipoInteraccion, tramite))
               val mapResult3: Future[Int] = future3.map(qr => qr.rows.get(0)("id").asInstanceOf[Int])
 
-              val interaccion = Await.result(mapResult3, 5 seconds)
+              val interaccion = Await.result(mapResult3, 30 seconds)
               println(s" Interaccion ${interaccion}")
 
             }
