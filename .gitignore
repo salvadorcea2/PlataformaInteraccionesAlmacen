@@ -9,11 +9,18 @@ CVS/
 minvu/
 logs/
 amazon/
+receptorDTEntrada/
+receptorDTProcesamiento/
+receptorExcelEntrada/
+receptorExcelProcesamiento/
+sql/
+tramites/
 /jars/
 .idea/
 .classpath
 .project
 
+*.xlsx
 *.log
 # OS Files #
 .DS_Store
