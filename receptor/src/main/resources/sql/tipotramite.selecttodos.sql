@@ -1,0 +1,1 @@
+select id, nombre, descripcion, institucion_id, codigo_pmg, url, habilitado  from  tipo_tramite order by id

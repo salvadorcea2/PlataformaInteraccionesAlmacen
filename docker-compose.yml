@@ -1,0 +1,29 @@
+version: '2'
+services:
+  seed:
+    image: administrador:v1.0
+    ports:
+      - '1600:2551'
+    environment:
+      REPSEG_CLUSTER_PORT: 1600
+      REPSEG_CLUSTER_IP: 172.20.30.176
+      REPSEG_SEED_IP: 172.20.30.176
+      REPSEG_SEED_PORT: 1600
+  c1:
+    image: ejecutor:v1.0
+    ports:
+      - '1601:2551'
+    environment:
+      REPSEG_CLUSTER_IP: 172.20.30.176
+      REPSEG_CLUSTER_PORT: 1601
+      REPSEG_SEED_IP: 172.20.30.176
+      REPSEG_SEED_PORT: 1600
+  c2:
+    image: ejecutor:v1.0
+    ports:
+      - '1602:2551'
+    environment:
+      REPSEG_CLUSTER_IP: 172.20.30.176
+      REPSEG_CLUSTER_PORT: 1602
+      REPSEG_SEED_IP: 172.20.30.176
+      REPSEG_SEED_PORT: 1600
