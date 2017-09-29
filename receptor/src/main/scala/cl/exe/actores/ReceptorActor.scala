@@ -9,8 +9,9 @@ import akka.cluster.{Cluster, Member, MemberStatus}
 import akka.cluster.ClusterEvent._
 import akka.cluster.singleton.{ClusterSingletonProxy, ClusterSingletonProxySettings}
 import akka.pattern.{ask, pipe}
-import cl.exe.modelo.{Entidad, Recepcion, Receptor}
+import cl.exe.modelo.{Entidad, Recepcion, Receptor, TipoTramite}
 import cl.exe.modelo.Entidad.EntidadId
+import cl.exe.modelo.TipoTramite
 import cl.exe.bd.Conexion._
 import com.typesafe.scalalogging.LazyLogging
 import org.apache.camel.CamelContext
@@ -37,14 +38,18 @@ Agregar en la bitacora la info total del procesamiento
 class DwhActor extends Actor with ActorLogging {
   def receive = {
     case (recepcion: Recepcion, rec: ActorRef) =>
-      var future: Future[QueryResult] = pool.sendQuery(s"select * from dwh.generar_interacciones(${recepcion.id})")
-      Await.result(future, 30 seconds)
-      future = pool.sendQuery(s"select * from dwh.generar_tramites(${recepcion.id})")
-      Await.result(future, 30 seconds)
-      ejecutarSQL("recepcion_estado.update.sql", Array(recepcion.id, "finalizada")).map(qr => {
-        rec ! recepcion.copy(estado = "finalizada")
-        context.parent ! PoisonPill
-      })
+      log.info("DWH Generado")
+      /*
+      log.info(recepcion.propiedades("generadores"));
+
+      val generadores = recepcion.propiedades("generadores").split(";")
+      for (generador <- generadores) {
+        log.info(s"Invocando generado $generador")
+        var future: Future[QueryResult] = pool.sendQuery(s"select * from ${generador.trim}(${recepcion.id})")
+        Await.result(future, 30 seconds)
+      }*/
+      rec ! recepcion.copy(estado = "finalizada")
+      context.parent ! PoisonPill
 
   }
 }
@@ -162,18 +167,50 @@ class EjecutorLogActor extends EjecutorBaseActor with ActorLogging {
 
 class EjecutorExcelActor extends EjecutorBaseActor with ActorLogging {
 
-  def insertar(recepcion: Recepcion, fecha: DateTime, tipoTramite: Int, canal: Int) = {
 
-    val future2: Future[QueryResult] = ejecutarSQL("tramite.insert.sql", Array(recepcion.id, tipoTramite, fecha, 0))
-    val mapResult2: Future[Int] = future2.map(qr => qr.rows.get(0)("id").asInstanceOf[Int])
-    val tramite = Await.result(mapResult2, 30 seconds)
+  val sdf = new SimpleDateFormat("yyyyMMdd")
 
-    for (i <- 1 to 2) {
-      val future3: Future[QueryResult] = ejecutarSQL("interaccion.insert.sql", Array(recepcion.id, 0, fecha, i, canal, tramite, 0))
-      val mapResult3: Future[Int] = future3.map(qr => qr.rows.get(0)("id").asInstanceOf[Int])
 
-      val interaccion = Await.result(mapResult3, 30 seconds)
+
+  def insertar(recepcion: Recepcion, tipoTramite: TipoTramite, factor : Option[Map[Int, Double]], fechaMensual: DateTime, fechaAnual:DateTime, canal: Int, cantidad : Int) : Int = {
+
+
+    var inserciones = 0
+    val mes = sdf.format(fechaMensual.toDate).toInt
+    val anual = sdf.format(fechaAnual.toDate).toInt
+
+    val factores = if (factor.isEmpty)
+      Map(0->1.0)
+    else
+        factor.get
+
+
+    val funcionTramite = tipoTramite.periodicidad match {
+      case 4 /* MENSUAL */ => s"select * from dwh.insertar_tramite_mensual($mes,$canal,${tipoTramite.id},$cantidad, $anual)"
+      case 5 /* ANUAL */ => s"select * from dwh.insertar_tramite_anual($anual,$canal,${tipoTramite.id},$cantidad)"
+
     }
+
+
+    var futureTramite : Future[QueryResult] = pool.sendQuery(funcionTramite)
+    Await.result(futureTramite.map(qr=>qr), 30 seconds)
+    inserciones = inserciones+1
+
+    factores.foreach{
+      case (tipoInteraccion, valorFactor) =>
+        val funcionInteraccion = tipoTramite.periodicidad  match {
+          case 4 /* MENSUAL */ => s"select * from dwh.insertar_interaccion_mensual($mes,$tipoInteraccion,$canal,${tipoTramite.id}, ${(cantidad*valorFactor).toInt}, $anual)"
+          case 5 /* ANUAL */ => s"select * from dwh.insertar_interaccion_anual($anual,$tipoInteraccion,$canal,${tipoTramite.id}, ${(cantidad*valorFactor).toInt})"
+
+        }
+        log.info(funcionInteraccion)
+        var futureInteraccion : Future[QueryResult] = pool.sendQuery(funcionInteraccion)
+        Await.result(futureInteraccion.map(qr=>qr), 30 seconds)
+        inserciones = inserciones+1
+
+    }
+    inserciones
+
   }
 
 
@@ -187,9 +224,10 @@ class EjecutorExcelActor extends EjecutorBaseActor with ActorLogging {
       log.info("Recepcion {} {}", recepcion.id, recepcion.archivo)
       val iterator = datatypeSheet.iterator()
       iterator.next //Saltar titulos
-    var lineas = 0
+       var lineas = 0
       var inserciones = 0
       var errores = 0
+
       while (iterator.hasNext()) {
 
         val currentRow = iterator.next()
@@ -200,46 +238,76 @@ class EjecutorExcelActor extends EjecutorBaseActor with ActorLogging {
             var cell = cellIterator.next()
             var error = false
             val codigoPMG = if (cell.getCellTypeEnum == CellType.STRING) cell.getStringCellValue() else cell.getNumericCellValue.toInt.toString
+            log.info(s"Codigo PMG $codigoPMG")
             val nombre = cellIterator.next().getStringCellValue()
             val periodoInicio = cellIterator.next.getDateCellValue()
             val periodoFin = cellIterator.next.getDateCellValue()
-            val total = cellIterator.next.getNumericCellValue().toInt
-            val canalWeb = cellIterator.next.getNumericCellValue().toInt
-            val presencial = cellIterator.next.getNumericCellValue().toInt
-            val callCenter = cellIterator.next.getNumericCellValue().toInt
-            val otros = cellIterator.next.getNumericCellValue().toInt
+            val total = try {
+              cellIterator.next.getNumericCellValue().toInt
+            }
+            catch {
+              case e: Exception =>
+                0
+            }
+              val presencial = try {
+                cellIterator.next.getNumericCellValue().toInt
+              }
+              catch {
+                case e: Exception =>
+                  0
+              }
+              val canalWeb = try {
+                cellIterator.next.getNumericCellValue().toInt
+              }
+              catch {
+                case e : Exception =>
+                  0
+              }
+              val callCenter = try {
+                cellIterator.next.getNumericCellValue().toInt
+              }
+              catch {
+                case e: Exception =>
+                  0
+              }
 
-            val dias = Days.daysBetween(new DateTime(periodoInicio), new DateTime(periodoFin)).getDays() + 1
-            val canales = Array(0, 1, 2, 7)
-            val totales = Array(otros, presencial, canalWeb, callCenter)
-            val tipoTramite = Cache.tipoTramites.get(codigoPMG)
-            if (tipoTramite.isEmpty) {
-              bitacora(recepcion.id, "ERROR", s"Tipo de trámite no existe en la fila ${currentRow.getRowNum}", "procesamiento")
-              errores = errores + 1
-              error = true
-            }
-            if (total != canalWeb + presencial + callCenter + otros) {
-              bitacora(recepcion.id, "ERROR", s"El total de trámites no coincide con la sumatoria de los canales en la fila ${currentRow.getRowNum}", "procesamiento")
-              errores = errores + 1
-              error = true
-            }
+              val canales = Array(1, 2, 7)
+              val totales = Array(presencial, canalWeb, callCenter)
+              val tipoTramite = Cache.tipoTramites.get(codigoPMG)
+              val factor = Cache.factores.get(codigoPMG)
+              if (tipoTramite.isEmpty) {
+                bitacora(recepcion.id, "ERROR", s"Tipo de trámite no existe en la fila ${currentRow.getRowNum}", "procesamiento")
+                errores = errores + 1
+                error = true
+              }
+              if (total != canalWeb + presencial + callCenter) {
+                bitacora(recepcion.id, "ERROR", s"El total de trámites no coincide con la sumatoria de los canales en la fila ${currentRow.getRowNum}", "procesamiento")
+                errores = errores + 1
+                error = true
+              }
 
             if (!error) {
-              for (i <- 0 to 3) {
-                val total = totales(i)
-                val canal = canales(i)
-                for (j <- 1 to total) {
-                  val fecha = new DateTime(periodoInicio).plusDays(j % dias)
-                  inserciones = inserciones + 2
-                  insertar(recepcion, fecha, tipoTramite.get.id, canal)
+              val fechaMensual = new DateTime(periodoInicio).withDayOfMonth(1)
+              val fechaAnual = new DateTime(periodoInicio).withMonthOfYear(1).withDayOfMonth(1)
+
+
+              log.info(fechaMensual.toDate.toString)
+              log.info(fechaMensual.toDate.toString)
+
+                for (i <- 0 to 2) {
+                  val total = totales(i)
+                  val canal = canales(i)
+                  if (total > 0)
+                   inserciones = inserciones + insertar(recepcion, tipoTramite.get, factor, fechaMensual, fechaAnual, canal,total)
+                  }
                 }
-              }
-            }
-            lineas = lineas + 1
+
+              lineas = lineas + 1
 
           }
           catch {
             case e: Exception =>
+              log.error(e,"Error al procesar la linea")
               println("FIN???")
           }
 
@@ -247,8 +315,8 @@ class EjecutorExcelActor extends EjecutorBaseActor with ActorLogging {
       }
 
 
-      log.info("Filas procesadas {} interacciones {}", lineas, inserciones)
-      bitacora(recepcion.id, "INFO", s"Filas procesadas $lineas tramites ${inserciones / 2} interacciones $inserciones", "procesada")
+      log.info("Filas procesadas {} inserciones {}", lineas, inserciones)
+      bitacora(recepcion.id, "INFO", s"Filas procesadas $lineas inserciones ${inserciones}", "procesada")
 
       workbook.close()
       procesamientoCompleto(rec, errores, recepcion)

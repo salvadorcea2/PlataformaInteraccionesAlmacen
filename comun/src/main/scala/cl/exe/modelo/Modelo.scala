@@ -17,7 +17,7 @@ case class Canal(id : EntidadId, nombre : String, descripcion: String,  habilita
 case class Formato(id : EntidadId, nombre : String, descripcion: String, habilitado : Boolean)
 case class Plantilla(id : EntidadId, nombre : String, descripcion: String, plantilla: String, habilitado : Boolean)
 case class Periodicidad(id : EntidadId, nombre : String, descripcion: String, habilitado : Boolean)
-case class TipoTramite(id : EntidadId, nombre : String, descripcion: String, institucionId : EntidadId, codigoPMG : String, url : String, habilitado : Boolean)
+case class TipoTramite(id : EntidadId, nombre : String, descripcion: String, institucionId : EntidadId, codigoPMG : String, url : String, periodicidad : Int, habilitado : Boolean)
 case class Recepcion(id:EntidadId, receptorId : EntidadId, fechaCreacion : Date, estado : String, archivo : String, propiedades : Map[String, String], hmac : Array[Byte] )
 case class Tramite(id:EntidadId, recepcionId : EntidadId, tipoTramiteId : EntidadId, personaId : EntidadId, fechaCreacion : Date, fechaTramite : Date,  hmac : Array[Byte])
 case class Interaccion(id:EntidadId, recepcionId : EntidadId, periodicidadId : EntidadId, tipoInteraccionId : EntidadId, canalId : EntidadId, tramiteId : EntidadId, localidadId : EntidadId, fechaCreacion : Date, fechaInteraccion : Date, hmac : Array[Byte] )

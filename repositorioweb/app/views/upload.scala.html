@@ -1,0 +1,13 @@
+
+@()(implicit request: RequestHeader)
+<html>
+    <body>
+        @helper.form(action = routes.UploadController.upload, 'enctype -> "multipart/form-data") {
+            @helper.CSRF.formField
+            <input type="file" name="archivo" />
+            <input type="submit" value="Enviar"/>
+        }
+    </body>
+</html>
+
+

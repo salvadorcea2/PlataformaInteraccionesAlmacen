@@ -1,0 +1,14 @@
+version: '2'
+services:
+  seed:
+    image: receptor:1.0
+    ports:
+      - '1600:2551'
+    environment:
+      REPSEG_CLUSTER_PORT: 1600
+      REPSEG_CLUSTER_IP: 192.168.1.85
+      REPSEG_SEED_IP: 192.168.1.85
+      REPSEG_SEED_PORT: 1600
+      REPSEG_HOST_POSTGRES: 192.168.1.85
+      REPSEG_PWD_POSTGRES: repo_adm
+      REPSEG_USR_POSTGRES: repo_adm

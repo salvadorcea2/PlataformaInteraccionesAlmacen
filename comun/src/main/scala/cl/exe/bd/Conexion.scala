@@ -47,13 +47,17 @@ object Conexion extends LazyLogging {
 
 
 
+  def obtenerSQL(sqlId:String) = {
+    val source = Source.fromResource(s"sql/$sqlId")
+    val sql = try source.mkString finally source.close
+    sql
+
+  }
 
   def ejecutarSQL(sqlId : String, parametros : Seq[Any]): Future[QueryResult]= {
 
     logger.debug(s"$sqlId $parametros")
-    val source = Source.fromResource(s"sql/$sqlId")
-    val sql = try source.mkString finally source.close
-    pool.sendPreparedStatement(sql, parametros)
+    pool.sendPreparedStatement(obtenerSQL(sqlId), parametros)
   }
 
 

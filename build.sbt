@@ -72,6 +72,12 @@ lazy val dependenciasReceptor = Seq(
   "org.apache.camel" % "camel-ftp" % apacheCamelVersion
 )
 
+lazy val dependenciasRepoWeb = Seq ( jdbc , ehcache , ws , specs2 % Test , guice,
+    "com.nimbusds" % "oauth2-oidc-sdk" % "5.19.2",
+    "com.mashape.unirest" % "unirest-java" % "1.4.9"
+  )
+
+
 lazy val comun = project
   .settings(commonSettings: _*)
   .settings(libraryDependencies ++= dependenciasComunes)
@@ -116,8 +122,16 @@ lazy val receptor = project.in(file("receptor"))
   .enablePlugins(sbtdocker.DockerPlugin, JavaServerAppPackaging)
   .settings(dockerSettings)
 
+lazy val repositorioweb = project.in(file("repositorioweb"))
+  .aggregate(comun)
+  .dependsOn(comun)
+  .settings(commonSettings:_*)
+  .settings(libraryDependencies ++= dependenciasComunes)
+  .settings(libraryDependencies ++= dependenciasRepoWeb)
+  .enablePlugins(PlayScala)
+
 
 lazy val repositorio = project.in( file(".") )
   .settings(commonSettings:_*)
-  .aggregate(comun, ejecutor, administrador, receptor)
+  .aggregate(comun, ejecutor, administrador, receptor, repositorioweb)
 

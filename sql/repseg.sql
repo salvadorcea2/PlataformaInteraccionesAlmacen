@@ -2422,4 +2422,18 @@ ALTER TABLE ONLY usuario_receptor
     ADD CONSTRAINT fk_usuario_receptor_usuario FOREIGN KEY (usuario_id) REFERENCES usuario(id);
 
 
+create table mantenedor (
+    tabla varchar(120), 
+    singular varchar(120), 
+    plural varchar(120),
+    constraint pk_mantenedor primary key (tabla)
+);
 
+insert into mantenedor (tabla, singular, plural) values ('canal','Canal de interacción','Canales de interacción');
+insert into mantenedor (tabla, singular, plural) values ('canal_transmision','Canal de transmisión','Canales de transmision');
+insert into mantenedor (tabla, singular, plural) values ('extractor','Extractor','Extractores');
+insert into mantenedor (tabla, singular, plural) values ('formato','Formato','Formatos');
+insert into mantenedor (tabla, singular, plural) values ('periodicidad','Periodicidad','Periodicidades');
+insert into mantenedor (tabla, singular, plural) values ('tipo_interaccion','Tipo de interacción','Tipos de interacción');
+insert into mantenedor (tabla, singular, plural) values ('transformador','Transformador','Transformadores');
+insert into mantenedor (tabla, singular, plural) values ('validador','Validador','Validadores');
