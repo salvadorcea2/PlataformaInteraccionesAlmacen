@@ -12,7 +12,7 @@ script: sbt ++$TRAVIS_SCALA_VERSION receptor/docker:publishLocal;
 
 after_success:
   - if [ "$TRAVIS_BRANCH" == "testing" ]; then
-    docker container ls;
+    docker image ls;
     docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD";
     docker push "$DOCKER_HUB_ORG"/receptor:1.0;
     fi
