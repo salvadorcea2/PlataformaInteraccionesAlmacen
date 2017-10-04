@@ -169,6 +169,7 @@ class EjecutorExcelActor extends EjecutorBaseActor with ActorLogging {
 
 
   val sdf = new SimpleDateFormat("yyyyMMdd")
+  val sdfExcel = new SimpleDateFormat("dd-MM-yyyy")
 
 
 
@@ -233,38 +234,43 @@ class EjecutorExcelActor extends EjecutorBaseActor with ActorLogging {
         val currentRow = iterator.next()
         val cellIterator = currentRow.iterator()
 
-        while (cellIterator.hasNext()) {
           try {
             var cell = cellIterator.next()
             var error = false
             val codigoPMG = if (cell.getCellTypeEnum == CellType.STRING) cell.getStringCellValue() else cell.getNumericCellValue.toInt.toString
             log.info(s"Codigo PMG $codigoPMG")
             val nombre = cellIterator.next().getStringCellValue()
-            val periodoInicio = cellIterator.next.getDateCellValue()
-            val periodoFin = cellIterator.next.getDateCellValue()
+            cell = cellIterator.next()
+            val periodoInicio = if (cell.getCellTypeEnum == CellType.STRING) sdfExcel.parse(cell.getStringCellValue()) else cell.getDateCellValue()
+            cell = cellIterator.next()
+            val periodoFin = if (cell.getCellTypeEnum == CellType.STRING) sdfExcel.parse(cell.getStringCellValue()) else cell.getDateCellValue()
+            cell = cellIterator.next()
             val total = try {
-              cellIterator.next.getNumericCellValue().toInt
+              if (cell.getCellTypeEnum == CellType.STRING) cell.getStringCellValue.trim.toInt else cell.getNumericCellValue().toInt
             }
             catch {
               case e: Exception =>
                 0
             }
+            cell = cellIterator.next()
               val presencial = try {
-                cellIterator.next.getNumericCellValue().toInt
+                if (cell.getCellTypeEnum == CellType.STRING) cell.getStringCellValue.trim.toInt else cell.getNumericCellValue().toInt
               }
               catch {
                 case e: Exception =>
                   0
               }
+             cell = cellIterator.next()
               val canalWeb = try {
-                cellIterator.next.getNumericCellValue().toInt
+                if (cell.getCellTypeEnum == CellType.STRING) cell.getStringCellValue.trim.toInt else cell.getNumericCellValue().toInt
               }
               catch {
                 case e : Exception =>
                   0
               }
+              cell = cellIterator.next()
               val callCenter = try {
-                cellIterator.next.getNumericCellValue().toInt
+                if (cell.getCellTypeEnum == CellType.STRING) cell.getStringCellValue.trim.toInt else cell.getNumericCellValue().toInt
               }
               catch {
                 case e: Exception =>
@@ -309,9 +315,9 @@ class EjecutorExcelActor extends EjecutorBaseActor with ActorLogging {
             case e: Exception =>
               log.error(e,"Error al procesar la linea")
               println("FIN???")
+              iterator.next()
           }
 
-        }
       }
 
 
