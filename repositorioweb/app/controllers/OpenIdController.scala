@@ -41,12 +41,12 @@ import scala.concurrent.{Await, Future}
 
 
 object ClaveUnica {
-  val SECRET = "15ac5b28bce945798707f3600203295f"
+  val SECRET = if (Configuracion.config.getBoolean("repositorio.produccion")) "2d24045fbd70447fb7b765b98501e350" else "15ac5b28bce945798707f3600203295f"
   val URL_CU_TOKEN = "https://accounts.claveunica.gob.cl/openid/token"
   val URL_CU_USER_INFO = "https://www.claveunica.gob.cl/openid/userinfo"
   val CU_URI_STR = "https://accounts.claveunica.gob.cl/openid/authorize"
   val RETURN_URL = Configuracion.config.getString("repositorio.urlCallback")
-  val CLIENT_ID = "71aaf452ddab4ecd8929348117dd259e"
+  val CLIENT_ID = if (Configuracion.config.getBoolean("repositorio.produccion")) "54cdc791832e4bee92a1f22e5e201129" else "71aaf452ddab4ecd8929348117dd259e"
 }
 
 
