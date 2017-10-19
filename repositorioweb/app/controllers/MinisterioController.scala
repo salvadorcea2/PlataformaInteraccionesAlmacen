@@ -35,9 +35,9 @@ class MinisterioController @Inject()(cc: ControllerComponents)(implicit config: 
         clausula = "and"
       })
       nombre.foreach(n => {
-        parametros += n
-        sql = s"$sql $clausula nombre like ?"
-        sqlCuantos = s"$sqlCuantos $clausula nombre like ?"
+        parametros += "%"+n.toLowerCase+"%"
+        sql = s"$sql $clausula LOWER(nombre) like ?"
+        sqlCuantos = s"$sqlCuantos $clausula LOWER(nombre) like ?"
         clausula = "and"
       })
       id_cha.foreach(i => {

@@ -27,7 +27,7 @@ POST    /api/institucion                controllers.InstitucionController.post()
 PUT     /api/institucion                controllers.InstitucionController.put()
 DELETE  /api/institucion/$id<[0-9]+>    controllers.InstitucionController.delete(id: Int)
 
-GET     /api/tipotramite                controllers.TipoTramiteController.get(inicio : Int ?=0, cuantos : Int ?=10, orden : String ?="id", tipoOrden: String ?="desc", habilitado: Option[Boolean], id : Option[Int], nombre : Option[String], institucion_id : Option[Int], codigo_pmg:Option[String])
+GET     /api/tipotramite                controllers.TipoTramiteController.get(inicio : Int ?=0, cuantos : Int ?=10, orden : String ?="id", tipoOrden: String ?="desc", habilitado: Option[Boolean], id : Option[Int], nombre : Option[String], ministerio_id : Option[Int],subsecretaria_id : Option[Int],institucion_id : Option[Int], codigo_pmg:Option[String])
 POST    /api/tipotramite                controllers.TipoTramiteController.post()
 PUT     /api/tipotramite                controllers.TipoTramiteController.put()
 DELETE  /api/tipotramite/$id<[0-9]+>    controllers.TipoTramiteController.delete(id: Int)

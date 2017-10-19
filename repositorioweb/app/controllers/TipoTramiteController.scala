@@ -18,7 +18,7 @@ class TipoTramiteController @Inject()(cc: ControllerComponents)(implicit config:
 
   val tabla = "tipo_tramite"
 
-  def get(inicio: Int, cuantos: Int, orden: String, tipoOrden: String, habilitado: Option[Boolean], id: Option[Int], nombre: Option[String], institucion_id: Option[Int], codigo_pmg : Option[String]) = Action.async { implicit request =>
+  def get(inicio: Int, cuantos: Int, orden: String, tipoOrden: String, habilitado: Option[Boolean], id: Option[Int], nombre: Option[String], ministerio_id: Option[Int],subsecretaria_id: Option[Int],institucion_id: Option[Int], codigo_pmg : Option[String]) = Action.async { implicit request =>
 
     try {
       val parametros = ArrayBuffer.empty[Any]
@@ -28,6 +28,24 @@ class TipoTramiteController @Inject()(cc: ControllerComponents)(implicit config:
       var sqlCuantos = s"select count(*) from $tabla"
 
       var clausula = "where"
+
+      if (institucion_id.isEmpty && subsecretaria_id.isEmpty)
+        ministerio_id.foreach(m => {
+          sql = s"$sql $clausula id in (select tt.id from tipo_tramite tt, institucion i, subsecretaria s, ministerio m  where m.id = $m and s.ministerio_id=m.id and i.subsecretaria_id = s.id and tt.institucion_id = i.id)"
+          sqlCuantos = s"$sqlCuantos $clausula id in (select tt.id from tipo_tramite tt, institucion i, subsecretaria s, ministerio m  where m.id = $m and s.ministerio_id=m.id and i.subsecretaria_id = s.id and tt.institucion_id = i.id)"
+          clausula = "and"
+
+        })
+
+       if (institucion_id.isEmpty )
+        subsecretaria_id.foreach(s => {
+          sql = s"$sql $clausula id in (select tt.id from tipo_tramite tt, institucion i, subsecretaria s   where s.id = $s and i.subsecretaria_id = s.id and tt.institucion_id = i.id)"
+          sqlCuantos = s"$sqlCuantos $clausula id in (select tt.id from tipo_tramite tt, institucion i, subsecretaria s   where s.id = $s and i.subsecretaria_id = s.id and tt.institucion_id = i.id)"
+          clausula = "and"
+        })
+
+
+
       id.foreach(i => {
         parametros += i
         sql = s"$sql $clausula id = ?"
@@ -35,9 +53,9 @@ class TipoTramiteController @Inject()(cc: ControllerComponents)(implicit config:
         clausula = "and"
       })
       nombre.foreach(n => {
-        parametros += n
-        sql = s"$sql $clausula nombre like ?"
-        sqlCuantos = s"$sqlCuantos $clausula nombre like ?"
+        parametros += "%"+n.toLowerCase+"%"
+        sql = s"$sql $clausula LOWER(nombre) like ?"
+        sqlCuantos = s"$sqlCuantos $clausula LOWER(nombre) like ?"
         clausula = "and"
       })
       habilitado.foreach(h => {
@@ -58,7 +76,7 @@ class TipoTramiteController @Inject()(cc: ControllerComponents)(implicit config:
         sqlCuantos = s"$sqlCuantos $clausula codigo_pmg = ?"
         clausula = "and"
       })
-
+      
 
       if (cuantos != 0)
         sql = sql + s" order by $orden $tipoOrden limit $cuantos offset $inicio"
