@@ -24,7 +24,7 @@ class TipoTramiteController @Inject()(cc: ControllerComponents)(implicit config:
       val parametros = ArrayBuffer.empty[Any]
 
 
-      var sql = s"select id, nombre, descripcion, institucion_id, codigo_pmg, url,  habilitado from $tabla"
+      var sql = s"select id, nombre, descripcion, institucion_id, codigo_pmg, url, periodicidad_id, comentarios, clave_unica, costo, codigo_simple, categoria_id, nivel_digitalizacion_id, presencialidad, barreras_normativas, fuente, habilitado from $tabla"
       var sqlCuantos = s"select count(*) from $tabla"
 
       var clausula = "where"
@@ -106,20 +106,40 @@ class TipoTramiteController @Inject()(cc: ControllerComponents)(implicit config:
       (__ \ 'institucion_id).read[Int] and
       (__ \ 'codigo_pmg).read[String] and
       (__ \ 'url).read[String] and
+      (__ \ 'periodicidad_id).read[Int] and
+      (__ \ 'comentarios).read[String] and
+      (__ \ 'clave_unica).read[Boolean] and
+      (__ \ 'costo).read[Int] and
+      (__ \ 'codigo_simple).read[String] and
+      (__ \ 'categoria_id).read[Int] and
+      (__ \ 'nivel_digitalizacion_id).read[Int] and
+      (__ \ 'presencialidad).read[Boolean] and
+      (__ \ 'barreras_normativas).read[String] and
+      (__ \ 'fuente).read[String] and
       (__ \ 'habilitado).read[Boolean]
     ) tupled
 
   def post() = Action.async { implicit request =>
     request.body.asJson.map { json =>
-      json.validate[(String, String, Int, String, String, Boolean)](rdsPost).map {
-        case (nombre, descripcion, institucion, codigo, url, habilitado) =>
-          val sql = s"insert into $tabla (nombre, descripcion, institucion_id, codigo_pmg, url, habilitado) values (?,?,?,?,?,?) returning id"
+      json.validate[(String, String, Int, String, String, Int, String, Boolean, Int, String, Int, Int, Boolean, String, String, Boolean)](rdsPost).map {
+        case (nombre, descripcion, institucion, codigo, url, periodicidad_id, comentarios, clave_unica, costo, codigo_simple, categoria_id, nivel_digitalizacion_id, presencialidad, barreras_normativas, fuente,  habilitado) =>
+          val sql = s"insert into $tabla (nombre, descripcion, institucion_id, codigo_pmg, url, periodicidad_id, comentarios, clave_unica, costo, codigo_simple, categoria_id, nivel_digitalizacion_id, presencialidad, barreras_normativas, fuente, habilitado) values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) returning id"
           val parametros = ArrayBuffer.empty[Any]
           parametros += nombre
           parametros += descripcion
           parametros += institucion
           parametros += codigo
           parametros += url
+          parametros += periodicidad_id
+          parametros += comentarios
+          parametros += clave_unica
+          parametros += costo
+          parametros += codigo_simple
+          parametros += categoria_id
+          parametros += nivel_digitalizacion_id
+          parametros += presencialidad
+          parametros += barreras_normativas
+          parametros += fuente
           parametros += habilitado
           pool.sendPreparedStatement(sql, parametros).map(qr => {
             Ok(toRespuesta(toJson(qr.rows, qr.rows.get.columnNames)))
@@ -145,20 +165,40 @@ class TipoTramiteController @Inject()(cc: ControllerComponents)(implicit config:
       (__ \ 'institucion_id).read[Int] and
       (__ \ 'codigo_pmg).read[String] and
       (__ \ 'url).read[String] and
+      (__ \ 'periodicidad_id).read[Int] and
+      (__ \ 'comentarios).read[String] and
+      (__ \ 'clave_unica).read[Boolean] and
+      (__ \ 'costo).read[Int] and
+      (__ \ 'codigo_simple).read[String] and
+      (__ \ 'categoria_id).read[Int] and
+      (__ \ 'nivel_digitalizacion_id).read[Int] and
+      (__ \ 'presencialidad).read[Boolean] and
+      (__ \ 'barreras_normativas).read[String] and
+      (__ \ 'fuente).read[String] and
       (__ \ 'habilitado).read[Boolean]
     ) tupled
 
   def put() = Action.async { implicit request =>
     request.body.asJson.map { json =>
-      json.validate[(Int,String, String, Int, String, String , Boolean)](rdsPut).map {
-        case (id, nombre, descripcion, institucion, codigo, url, habilitado) =>
-          val sql = s"update $tabla set nombre=?, descripcion=?, institucion_id = ?, codigo_pmg=?, url=?, habilitado = ? where id = ? returning id"
+      json.validate[(Int,String, String, Int, String, String ,Int, String, Boolean, Int, String, Int, Int, Boolean, String, String, Boolean)](rdsPut).map {
+        case (id, nombre, descripcion, institucion, codigo, url, periodicidad_id, comentarios, clave_unica, costo, codigo_simple, categoria_id, nivel_digitalizacion_id, presencialidad, barreras_normativas, fuente,  habilitado) =>
+          val sql = s"update $tabla set nombre=?, descripcion=?, institucion_id = ?, codigo_pmg=?, url=?, periodicidad_id=?, comentarios=?, clave_unica=?, costo=?, codigo_simple=?, categoria_id=?, nivel_digitalizacion_id=?, presencialidad=?, barreras_normativas=?, fuente=?, habilitado = ? where id = ? returning id"
           val parametros = ArrayBuffer.empty[Any]
           parametros += nombre
           parametros += descripcion
           parametros += institucion
           parametros += codigo
           parametros += url
+          parametros += periodicidad_id
+          parametros += comentarios
+          parametros += clave_unica
+          parametros += costo
+          parametros += codigo_simple
+          parametros += categoria_id
+          parametros += nivel_digitalizacion_id
+          parametros += presencialidad
+          parametros += barreras_normativas
+          parametros += fuente
           parametros += habilitado
           parametros += id
           pool.sendPreparedStatement(sql, parametros).map(qr => {
