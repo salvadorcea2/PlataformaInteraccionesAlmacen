@@ -24,7 +24,7 @@ import cl.exe.dao.ReceptorDAO.bitacora
 import com.github.mauricio.async.db.QueryResult
 import org.apache.poi.ss.usermodel.CellType
 import org.apache.poi.xssf.usermodel.XSSFWorkbook
-import org.joda.time.{DateTime, Days}
+import org.joda.time.{DateTime, Days, Months}
 
 import scala.concurrent.{Await, Future}
 import scala.io.Source
@@ -171,9 +171,29 @@ class EjecutorExcelActor extends EjecutorBaseActor with ActorLogging {
   val sdf = new SimpleDateFormat("yyyyMMdd")
   val sdfExcel = new SimpleDateFormat("dd-MM-yyyy")
 
+  def obtenerMascaraUsuario(usuario : Int) : (Int,Int,Int) = {
 
 
-  def insertar(recepcion: Recepcion, tipoTramite: TipoTramite, factor : Option[Map[Int, Double]], fechaMensual: DateTime, fechaAnual:DateTime, canal: Int, cantidad : Int) : Int = {
+
+
+    var futureTramite: Future[QueryResult] = pool.sendQuery(s"select ministerio_id, subsecretaria_id, institucion_id from usuario where id=$usuario")
+    Await.result(futureTramite.map(qr => {
+      val row = qr.rows.get(0)
+      (row(0).asInstanceOf[Int],row(1).asInstanceOf[Int], row(2).asInstanceOf[Int])
+    }), 30 seconds)
+  }
+
+  def obtenerMascaraInstitucion( institucion : Int) : (Int,Int,Int) = {
+
+    var futureTramite: Future[QueryResult] = pool.sendQuery(s"select subsecretaria.ministerio_id, subsecretaria.id, $institucion from subsecretaria, institucion where institucion.id=$institucion and subsecretaria.id = institucion.subsecretaria_id")
+    Await.result(futureTramite.map(qr => {
+      val row = qr.rows.get(0)
+      (row(0).asInstanceOf[Int],row(1).asInstanceOf[Int], row(2).asInstanceOf[Int])
+    }), 30 seconds)
+  }
+
+
+  def insertar(recepcion: Recepcion, tipoTramite: TipoTramite, periodicidad : Int, factor : Option[Map[Int, Double]], fechaMensual: DateTime, fechaAnual:DateTime, canal: Int, cantidad : Int) : Int = {
 
 
     var inserciones = 0
@@ -186,7 +206,7 @@ class EjecutorExcelActor extends EjecutorBaseActor with ActorLogging {
         factor.get
 
 
-    val funcionTramite = tipoTramite.periodicidad match {
+    val funcionTramite = periodicidad match {
       case 4 /* MENSUAL */ => s"select * from dwh.insertar_tramite_mensual($mes,$canal,${tipoTramite.id},$cantidad, $anual)"
       case 5 /* ANUAL */ => s"select * from dwh.insertar_tramite_anual($anual,$canal,${tipoTramite.id},$cantidad)"
 
@@ -199,12 +219,11 @@ class EjecutorExcelActor extends EjecutorBaseActor with ActorLogging {
 
     factores.foreach{
       case (tipoInteraccion, valorFactor) =>
-        val funcionInteraccion = tipoTramite.periodicidad  match {
+        val funcionInteraccion = periodicidad  match {
           case 4 /* MENSUAL */ => s"select * from dwh.insertar_interaccion_mensual($mes,$tipoInteraccion,$canal,${tipoTramite.id}, ${(cantidad*valorFactor).toInt}, $anual)"
           case 5 /* ANUAL */ => s"select * from dwh.insertar_interaccion_anual($anual,$tipoInteraccion,$canal,${tipoTramite.id}, ${(cantidad*valorFactor).toInt})"
 
         }
-        log.info(funcionInteraccion)
         var futureInteraccion : Future[QueryResult] = pool.sendQuery(funcionInteraccion)
         Await.result(futureInteraccion.map(qr=>qr), 30 seconds)
         inserciones = inserciones+1
@@ -218,8 +237,11 @@ class EjecutorExcelActor extends EjecutorBaseActor with ActorLogging {
   def receive = {
     case recepcion: Recepcion =>
       val rec = sender()
+      val file = new File(recepcion.archivo)
+      val usuario = file.getParentFile().getName.toInt
+      val mascaraUsuario = obtenerMascaraUsuario(usuario)
 
-      val excelFile = new FileInputStream(new File(recepcion.archivo))
+      val excelFile = new FileInputStream(file)
       val workbook = new XSSFWorkbook(excelFile)
       val datatypeSheet = workbook.getSheetAt(0)
       log.info("Recepcion {} {}", recepcion.id, recepcion.archivo)
@@ -281,10 +303,21 @@ class EjecutorExcelActor extends EjecutorBaseActor with ActorLogging {
               val totales = Array(presencial, canalWeb, callCenter)
               val tipoTramite = Cache.tipoTramites.get(codigoPMG)
               val factor = Cache.factores.get(codigoPMG)
+
               if (tipoTramite.isEmpty) {
                 bitacora(recepcion.id, "ERROR", s"Tipo de trámite no existe en la fila ${currentRow.getRowNum}", "procesamiento")
                 errores = errores + 1
                 error = true
+              }
+              else  {
+                val mascaraTipoTramite = obtenerMascaraInstitucion(tipoTramite.get.institucionId)
+                if ((mascaraUsuario._3 != 0 && (mascaraTipoTramite._3 != mascaraUsuario._3)) ||
+                  (mascaraUsuario._2 != 0 && (mascaraTipoTramite._2 != mascaraUsuario._2)) ||
+                  (mascaraUsuario._1 != 0 && (mascaraTipoTramite._1 != mascaraUsuario._1))){
+                  error = true
+                  errores = errores + 1
+                  bitacora(recepcion.id, "ERROR", s"El usuario no está autorizado para procesar el trámite en la fila ${currentRow.getRowNum}", "procesamiento")
+                }
               }
               if (total != canalWeb + presencial + callCenter) {
                 bitacora(recepcion.id, "ERROR", s"El total de trámites no coincide con la sumatoria de los canales en la fila ${currentRow.getRowNum}", "procesamiento")
@@ -292,19 +325,28 @@ class EjecutorExcelActor extends EjecutorBaseActor with ActorLogging {
                 error = true
               }
 
+
             if (!error) {
               val fechaMensual = new DateTime(periodoInicio).withDayOfMonth(1)
               val fechaAnual = new DateTime(periodoInicio).withMonthOfYear(1).withDayOfMonth(1)
+              val fechaFin = new DateTime(periodoFin)
+
+              val meses = Months.monthsBetween(fechaMensual, fechaFin).getMonths
+              log.info("MESES "+meses)
+              val periodicidad = meses match {
+                case 0 => 4 /* MENSUAL */
+                case _ => 5 /* ANUAL */
+              }
+              log.info("MESES "+periodicidad)
 
 
-              log.info(fechaMensual.toDate.toString)
-              log.info(fechaMensual.toDate.toString)
+
 
                 for (i <- 0 to 2) {
                   val total = totales(i)
                   val canal = canales(i)
                   if (total > 0)
-                   inserciones = inserciones + insertar(recepcion, tipoTramite.get, factor, fechaMensual, fechaAnual, canal,total)
+                   inserciones = inserciones + insertar(recepcion, tipoTramite.get, periodicidad,factor, fechaMensual, fechaAnual, canal,total)
                   }
                 }
 
@@ -419,8 +461,8 @@ class ReceptorArchivoActor(receptor: Receptor) extends ReceptorActor(receptor) {
       contextoCamel.addRoutes(new RouteBuilder {
         def configure = {
           //  from(s"file://$directorio?exclude=.*\\.$procesando&move=$${file:name}.$procesando")
-          from(s"file://$directorio")
-            .to(s"file://${receptor.propiedades.get("directorioProcesamiento").get}")
+          from(s"file://$directorio?recursive=true")
+            .to(s"file://${receptor.propiedades.get("directorioProcesamiento").get}/")
             .process(exchange => procesarArchivo(receptor.propiedades.get("directorioProcesamiento").get + "/" + exchange.getIn().getHeader("CamelFileName").toString))
         }
       })

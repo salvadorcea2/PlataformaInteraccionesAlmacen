@@ -34,7 +34,9 @@ class UploadController @Inject()(cc: ControllerComponents)(implicit config: Conf
 
         val directorio = if (filename.endsWith("xlsx")) Configuracion.config.getString("repositorio.directorioExcel") else Configuracion.config.getString("repositorio.directorioLog")
         println(directorio)
-        archivo.ref.moveTo(Paths.get(s"$directorio/$filename"), replace = true)
+        Paths.get(s"$directorio/$usuario").toFile.mkdirs()
+
+        archivo.ref.moveTo(Paths.get(s"$directorio/$usuario/$filename"), replace = true)
         Redirect("index.html")
       }.getOrElse {
         Redirect(routes.UploadController.uploadForm).flashing(

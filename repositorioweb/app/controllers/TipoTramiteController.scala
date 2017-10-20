@@ -76,7 +76,7 @@ class TipoTramiteController @Inject()(cc: ControllerComponents)(implicit config:
         sqlCuantos = s"$sqlCuantos $clausula codigo_pmg = ?"
         clausula = "and"
       })
-      
+
 
       if (cuantos != 0)
         sql = sql + s" order by $orden $tipoOrden limit $cuantos offset $inicio"
