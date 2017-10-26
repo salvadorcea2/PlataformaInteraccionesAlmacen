@@ -39,22 +39,22 @@ class RecepcionController @Inject()(cc: ControllerComponents)(implicit config: C
       ministerio_id.foreach(m => {
         if (m != 0) {
           parametros += m
-          sql = sql + " and usuario.ministerio_id = ?"
-          sqlCuantos = sqlCuantos + " and usuario.ministerio_id = ?"
+          sql = sql + " and ministerio_id = ?"
+          sqlCuantos = sqlCuantos + " and ministerio_id = ?"
         }
       })
       subsecretaria_id.foreach(s => {
         if (s != 0) {
           parametros += s
-          sql = sql + " and usuario.subsecretaria_id = ?"
-          sqlCuantos = sqlCuantos + " and usuario.subsecretaria_id = ?"
+          sql = sql + " and subsecretaria_id = ?"
+          sqlCuantos = sqlCuantos + " and subsecretaria_id = ?"
         }
       })
       institucion_id.foreach(i => {
         if (i != 0) {
           parametros += i
-          sql = sql + " and usuario.institucion_id = ?"
-          sqlCuantos = sqlCuantos + " and usuario.institucion_id = ?"
+          sql = sql + " and institucion_id = ?"
+          sqlCuantos = sqlCuantos + " and institucion_id = ?"
         }
       })
       sql = sql + s" order by $orden $tipoOrden limit $cuantos offset $inicio"
@@ -120,12 +120,19 @@ class RecepcionController @Inject()(cc: ControllerComponents)(implicit config: C
     }
   }
 
-  def bitacora(id: Int, inicio: Int, cuantos: Int, orden: String, tipoOrden: String) = Action.async { implicit request =>
+  def bitacora(id: Int, inicio: Int, cuantos: Int, orden: String, tipoOrden: String, nivel : Option[String]) = Action.async { implicit request =>
 
     try {
-      val parametros = Array(id)
+      val parametros = ArrayBuffer.empty[Any]
+      parametros += id
       var sql = obtenerSQL("bitacora.select.sql")
       var sqlCuantos = obtenerSQL("bitacora.count.sql")
+
+      nivel.foreach(n => {
+        parametros += n
+        sql = sql + " and nivel = ?"
+        sqlCuantos = sqlCuantos + " and nivel = ?"
+      })
       sql = sql + s" order by $orden $tipoOrden limit $cuantos offset $inicio"
       for {
         total <- pool.sendPreparedStatement(sqlCuantos, parametros).map(qr => {
@@ -171,23 +178,23 @@ class RecepcionController @Inject()(cc: ControllerComponents)(implicit config: C
 
   val tabla_factor = "recepcion_factor"
 
-  def getFactores(id: Int, inicio: Int, cuantos: Int, orden: String, tipoOrden: String, canal_id: Option[Int]) = Action.async { implicit request =>
+  def getFactores(id: Int, inicio: Int, cuantos: Int, orden: String, tipoOrden: String, tipo_interaccion_id: Option[Int]) = Action.async { implicit request =>
 
     try {
       val parametros = ArrayBuffer.empty[Any]
 
 
-      var sql = s"select id, recepcion_id, tipo_tramite_id, canal_id, factor from $tabla_factor where recepcion_id = ?"
+      var sql = s"select id, recepcion_id, tipo_tramite_id, tipo_interaccion_id, factor from $tabla_factor where recepcion_id = ?"
       var sqlCuantos = s"select count(*) from $tabla_factor  where recepcion_id = ?"
 
       parametros += id
 
       var clausula = "and"
 
-      canal_id.foreach(c => {
+      tipo_interaccion_id.foreach(c => {
         parametros += c
-        sql = s"$sql $clausula canal_id = ?"
-        sqlCuantos = s"$sqlCuantos $clausula canal_id = ?"
+        sql = s"$sql $clausula tipo_interaccion_id = ?"
+        sqlCuantos = s"$sqlCuantos $clausula tipo_interaccion_id = ?"
         clausula = "and"
       })
 

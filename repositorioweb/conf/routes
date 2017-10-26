@@ -32,12 +32,12 @@ POST    /api/tipotramite                controllers.TipoTramiteController.post()
 PUT     /api/tipotramite                controllers.TipoTramiteController.put()
 DELETE  /api/tipotramite/$id<[0-9]+>    controllers.TipoTramiteController.delete(id: Int)
 
-GET   /api/tipotramite/factor/$idTipoTramite<[0-9]+>      controllers.TipoTramiteController.getFactor(idTipoTramite: Int, inicio : Int ?=0, cuantos : Int ?=10, orden : String ?="id", tipoOrden: String ?="desc", id: Option[Int], canal_id: Option[Int])
+GET   /api/tipotramite/factor/$idTipoTramite<[0-9]+>      controllers.TipoTramiteController.getFactor(idTipoTramite: Int, inicio : Int ?=0, cuantos : Int ?=10, orden : String ?="id", tipoOrden: String ?="desc", id: Option[Int], tipo_interaccion_id: Option[Int])
 POST   /api/tipotramite/factor    controllers.TipoTramiteController.postFactor()
 PUT   /api/tipotramite/factor    controllers.TipoTramiteController.putFactor()
 DELETE   /api/tipotramite/factor/$id<[0-9]+>      controllers.TipoTramiteController.deleteFactor(id : Int)
 
-GET   /api/tipotramite/historico/$idTipoTramite<[0-9]+>      controllers.TipoTramiteController.getHistorico(idTipoTramite: Int, inicio : Int ?=0, cuantos : Int ?=10, orden : String ?="id", tipoOrden: String ?="desc", id: Option[Int], canal_id: Option[Int], fecha_inicio : Option[String], fecha_termino:Option[String] )
+GET   /api/tipotramite/historico/$idTipoTramite<[0-9]+>      controllers.TipoTramiteController.getHistorico(idTipoTramite: Int, inicio : Int ?=0, cuantos : Int ?=10, orden : String ?="id", tipoOrden: String ?="desc", id: Option[Int], tipo_interaccion_id: Option[Int], fecha_inicio : Option[String], fecha_termino:Option[String] )
 
 GET     /api/subsecretaria                controllers.SubsecretariaController.get(inicio : Int ?=0, cuantos : Int ?=10, orden : String ?="id", tipoOrden: String ?="desc", habilitado: Option[Boolean], id : Option[Int], nombre : Option[String], ministerio_id : Option[Int])
 POST    /api/subsecretaria                controllers.SubsecretariaController.post()
@@ -75,9 +75,9 @@ DELETE   /api/plantilla/$id<[0-9]+>      controllers.ReceptorController.deletePl
 
 GET     /api/recepcion        controllers.RecepcionController.recepcion(inicio : Int ?=0, cuantos : Int ?=10, orden : String ?="id", tipoOrden: String ?="asc", fecha_inicio : Option[String], fecha_termino:Option[String], estado:Option[String], ministerio_id: Option[Int], subsecretaria_id:Option[Int], institucion_id : Option[Int])
 GET     /api/recepcion/receptores        controllers.RecepcionController.receptores()
-GET     /api/recepcion/bitacora/$id<[0-9]+>    controllers.RecepcionController.bitacora(id : Int, inicio : Int ?=0, cuantos : Int ?=10, orden : String ?="id", tipoOrden: String ?="asc")
+GET     /api/recepcion/bitacora/$id<[0-9]+>    controllers.RecepcionController.bitacora(id : Int, inicio : Int ?=0, cuantos : Int ?=10, orden : String ?="id", tipoOrden: String ?="asc", nivel : Option[String])
 GET     /api/recepcion/detalle/$id<[0-9]+>    controllers.RecepcionController.detalle(id : Int, inicio : Int ?=0, cuantos : Int ?=10, orden : String ?="codigo", tipoOrden: String ?="asc")
-GET   /api/recepcion/factores/$id<[0-9]+>      controllers.RecepcionController.getFactores(id: Int, inicio : Int ?=0, cuantos : Int ?=10, orden : String ?="id", tipoOrden: String ?="desc", canal_id: Option[Int] )
+GET   /api/recepcion/factores/$id<[0-9]+>      controllers.RecepcionController.getFactores(id: Int, inicio : Int ?=0, cuantos : Int ?=10, orden : String ?="id", tipoOrden: String ?="desc", tipo_interaccion_id: Option[Int] )
 # An example controller showing how to use dependency injection
 GET     /count                      controllers.CountController.count
 # An example controller showing how to write asynchronous code

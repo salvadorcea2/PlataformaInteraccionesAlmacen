@@ -26,6 +26,7 @@ import org.apache.poi.ss.usermodel.CellType
 import org.apache.poi.xssf.usermodel.XSSFWorkbook
 import org.joda.time.{DateTime, Days, Months}
 
+import scala.collection.mutable
 import scala.concurrent.{Await, Future}
 import scala.io.Source
 import scala.concurrent.duration._
@@ -34,6 +35,29 @@ import scala.concurrent.duration._
 Agregar en la bitacora la info total del procesamiento
  */
 
+object RecepcionUtil {
+
+  def obtenerUsuario(file : File) : Int = {
+    file.getParentFile().getName.toInt
+  }
+  def obtenerMascaraUsuario(usuario : Int) : (Int,Int,Int) = {
+    var futureTramite: Future[QueryResult] = pool.sendQuery(s"select ministerio_id, subsecretaria_id, institucion_id from usuario where id=$usuario")
+    Await.result(futureTramite.map(qr => {
+      val row = qr.rows.get(0)
+      (row(0).asInstanceOf[Int],row(1).asInstanceOf[Int], row(2).asInstanceOf[Int])
+    }), 30 seconds)
+  }
+
+  def obtenerMascaraInstitucion( institucion : Int) : (Int,Int,Int) = {
+
+    var futureTramite: Future[QueryResult] = pool.sendQuery(s"select subsecretaria.ministerio_id, subsecretaria.id, $institucion from subsecretaria, institucion where institucion.id=$institucion and subsecretaria.id = institucion.subsecretaria_id")
+    Await.result(futureTramite.map(qr => {
+      val row = qr.rows.get(0)
+      (row(0).asInstanceOf[Int],row(1).asInstanceOf[Int], row(2).asInstanceOf[Int])
+    }), 30 seconds)
+  }
+
+}
 
 class DwhActor extends Actor with ActorLogging {
   def receive = {
@@ -171,26 +195,9 @@ class EjecutorExcelActor extends EjecutorBaseActor with ActorLogging {
   val sdf = new SimpleDateFormat("yyyyMMdd")
   val sdfExcel = new SimpleDateFormat("dd-MM-yyyy")
 
-  def obtenerMascaraUsuario(usuario : Int) : (Int,Int,Int) = {
 
 
 
-
-    var futureTramite: Future[QueryResult] = pool.sendQuery(s"select ministerio_id, subsecretaria_id, institucion_id from usuario where id=$usuario")
-    Await.result(futureTramite.map(qr => {
-      val row = qr.rows.get(0)
-      (row(0).asInstanceOf[Int],row(1).asInstanceOf[Int], row(2).asInstanceOf[Int])
-    }), 30 seconds)
-  }
-
-  def obtenerMascaraInstitucion( institucion : Int) : (Int,Int,Int) = {
-
-    var futureTramite: Future[QueryResult] = pool.sendQuery(s"select subsecretaria.ministerio_id, subsecretaria.id, $institucion from subsecretaria, institucion where institucion.id=$institucion and subsecretaria.id = institucion.subsecretaria_id")
-    Await.result(futureTramite.map(qr => {
-      val row = qr.rows.get(0)
-      (row(0).asInstanceOf[Int],row(1).asInstanceOf[Int], row(2).asInstanceOf[Int])
-    }), 30 seconds)
-  }
 
 
   def insertar(recepcion: Recepcion, tipoTramite: TipoTramite, periodicidad : Int, factor : Option[Map[Int, Double]], fechaMensual: DateTime, fechaAnual:DateTime, canal: Int, cantidad : Int) : Int = {
@@ -238,8 +245,8 @@ class EjecutorExcelActor extends EjecutorBaseActor with ActorLogging {
     case recepcion: Recepcion =>
       val rec = sender()
       val file = new File(recepcion.archivo)
-      val usuario = file.getParentFile().getName.toInt
-      val mascaraUsuario = obtenerMascaraUsuario(usuario)
+      val usuario = RecepcionUtil.obtenerUsuario(file)
+      val mascaraUsuario = RecepcionUtil.obtenerMascaraUsuario(usuario)
 
       val excelFile = new FileInputStream(file)
       val workbook = new XSSFWorkbook(excelFile)
@@ -250,6 +257,33 @@ class EjecutorExcelActor extends EjecutorBaseActor with ActorLogging {
        var lineas = 0
       var inserciones = 0
       var errores = 0
+      val f = new scala.collection.mutable.HashMap[String, scala.collection.mutable.HashMap[Int, Double]].empty
+      val f1 = Cache.obtenerTipoTramites()
+      val tipoTramites = Await.result(f1, 30 seconds).getOrElse( Map[String, TipoTramite]().empty)
+
+
+
+      val f2 = ejecutarSQL("factores.select.sql", Array[Int]()).map(qr => {
+        qr.rows.get.foreach(r=> {
+
+          if (!f.contains(r("codigo_pmg").asInstanceOf[String])){
+            f += (r("codigo_pmg").asInstanceOf[String]-> new mutable.HashMap[Int,Double]())
+          }
+          val m = f(r("codigo_pmg").asInstanceOf[String])
+          m += (r("tipo_interaccion_id").asInstanceOf[Int] -> r("factor").asInstanceOf[Double])
+
+
+        })
+      })
+
+
+      Await.result(f2, 30 seconds)
+      val factores = f.map(kv => (kv._1->kv._2.toMap)).toMap
+
+      val f3 = pool.sendQuery(s"""WITH r as (Select id from recepcion where id = ${recepcion.id})
+        insert into recepcion_factor(recepcion_id, tipo_tramite_id, tipo_interaccion_id, factor)
+        select (select id from r), tipo_tramite_id, tipo_interaccion_id, factor from tipo_tramite_factor """)
+      Await.result(f3, 30 seconds)
 
       while (iterator.hasNext()) {
 
@@ -301,8 +335,8 @@ class EjecutorExcelActor extends EjecutorBaseActor with ActorLogging {
 
               val canales = Array(1, 2, 7)
               val totales = Array(presencial, canalWeb, callCenter)
-              val tipoTramite = Cache.tipoTramites.get(codigoPMG)
-              val factor = Cache.factores.get(codigoPMG)
+              val tipoTramite = tipoTramites.get(codigoPMG)
+              val factor = factores.get(codigoPMG)
 
               if (tipoTramite.isEmpty) {
                 bitacora(recepcion.id, "ERROR", s"Tipo de trámite no existe en la fila ${currentRow.getRowNum}", "procesamiento")
@@ -310,7 +344,7 @@ class EjecutorExcelActor extends EjecutorBaseActor with ActorLogging {
                 error = true
               }
               else  {
-                val mascaraTipoTramite = obtenerMascaraInstitucion(tipoTramite.get.institucionId)
+                val mascaraTipoTramite = RecepcionUtil.obtenerMascaraInstitucion(tipoTramite.get.institucionId)
                 if ((mascaraUsuario._3 != 0 && (mascaraTipoTramite._3 != mascaraUsuario._3)) ||
                   (mascaraUsuario._2 != 0 && (mascaraTipoTramite._2 != mascaraUsuario._2)) ||
                   (mascaraUsuario._1 != 0 && (mascaraTipoTramite._1 != mascaraUsuario._1))){
@@ -414,7 +448,9 @@ abstract class ReceptorActor(receptor: Receptor) extends Actor with Entidad with
   override def receive = {
     case recepcion@Recepcion(0, _, _, _, _, _, _) =>
       log.info(recepcion.archivo)
-      ejecutarSQL("recepcion.insert.sql", Array(receptor.id, recepcion.archivo)).map(qr => {
+      val usuario = RecepcionUtil.obtenerUsuario(new java.io.File(recepcion.archivo))
+      val mascara = RecepcionUtil.obtenerMascaraUsuario(usuario)
+      ejecutarSQL("recepcion.insert.sql", Array(receptor.id, recepcion.archivo, usuario, mascara._1, mascara._2, mascara._3)).map(qr => {
         val id = qr.rows.get(0)("id").asInstanceOf[Int]
         recepcion.copy(id = id)
       }).pipeTo(self)

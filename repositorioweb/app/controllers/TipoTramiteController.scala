@@ -237,13 +237,13 @@ class TipoTramiteController @Inject()(cc: ControllerComponents)(implicit config:
 
   val tabla_factor_historico = "tipo_tramite_factor_historico"
 
-  def getHistorico(idTipoTramite: Int, inicio: Int, cuantos: Int, orden: String, tipoOrden: String, id: Option[Int], canal_id: Option[Int], fecha_inicio : Option[String], fecha_termino : Option[String]) = Action.async { implicit request =>
+  def getHistorico(idTipoTramite: Int, inicio: Int, cuantos: Int, orden: String, tipoOrden: String, id: Option[Int], tipo_interaccion_id: Option[Int], fecha_inicio : Option[String], fecha_termino : Option[String]) = Action.async { implicit request =>
 
     try {
       val parametros = ArrayBuffer.empty[Any]
 
 
-      var sql = s"select id, tipo_tramite_id, canal_id, factor, fecha_creacion from $tabla_factor_historico where tipo_tramite_id = ?"
+      var sql = s"select id, tipo_tramite_id, tipo_interaccion_id, factor, fecha_creacion from $tabla_factor_historico where tipo_tramite_id = ?"
       var sqlCuantos = s"select count(*) from $tabla_factor_historico  where tipo_tramite_id = ?"
 
       parametros += idTipoTramite
@@ -255,10 +255,10 @@ class TipoTramiteController @Inject()(cc: ControllerComponents)(implicit config:
         sqlCuantos = s"$sqlCuantos $clausula id = ?"
         clausula = "and"
       })
-      canal_id.foreach(c => {
+      tipo_interaccion_id.foreach(c => {
         parametros += c
-        sql = s"$sql $clausula canal_id = ?"
-        sqlCuantos = s"$sqlCuantos $clausula canal_id = ?"
+        sql = s"$sql $clausula tipo_interaccion_id = ?"
+        sqlCuantos = s"$sqlCuantos $clausula tipo_interaccion_id = ?"
         clausula = "and"
       })
       fecha_inicio.foreach(f => {
@@ -295,13 +295,13 @@ class TipoTramiteController @Inject()(cc: ControllerComponents)(implicit config:
 
   val tabla_factor = "tipo_tramite_factor"
 
-  def getFactor(idTipoTramite: Int, inicio: Int, cuantos: Int, orden: String, tipoOrden: String, id: Option[Int], canal_id: Option[Int]) = Action.async { implicit request =>
+  def getFactor(idTipoTramite: Int, inicio: Int, cuantos: Int, orden: String, tipoOrden: String, id: Option[Int], tipo_interaccion_id: Option[Int]) = Action.async { implicit request =>
 
     try {
       val parametros = ArrayBuffer.empty[Any]
 
 
-      var sql = s"select id, tipo_tramite_id, canal_id, factor from $tabla_factor where tipo_tramite_id = ?"
+      var sql = s"select id, tipo_tramite_id, tipo_interaccion_id, factor from $tabla_factor where tipo_tramite_id = ?"
       var sqlCuantos = s"select count(*) from $tabla_factor  where tipo_tramite_id = ?"
 
 
@@ -314,10 +314,10 @@ class TipoTramiteController @Inject()(cc: ControllerComponents)(implicit config:
         sqlCuantos = s"$sqlCuantos $clausula id = ?"
         clausula = "and"
       })
-      canal_id.foreach(c => {
+      tipo_interaccion_id.foreach(c => {
         parametros += c
-        sql = s"$sql $clausula canal_id = ?"
-        sqlCuantos = s"$sqlCuantos $clausula canal_id = ?"
+        sql = s"$sql $clausula tipo_interaccion_id = ?"
+        sqlCuantos = s"$sqlCuantos $clausula tipo_interaccion_id = ?"
         clausula = "and"
       })
 
@@ -366,19 +366,19 @@ class TipoTramiteController @Inject()(cc: ControllerComponents)(implicit config:
 
   implicit val rdsPostFactor = (
     (__ \ 'tipo_tramite_id).read[Int] and
-      (__ \ 'canal_id).read[Int] and
+      (__ \ 'tipo_interaccion_id).read[Int] and
       (__ \ 'factor).read[Double]
     ) tupled
 
   def postFactor = Action.async { implicit request =>
     request.body.asJson.map { json =>
       json.validate[(Int, Int, Double)](rdsPostFactor).map {
-        case (tipo_tramite_id, canal_id, factor) =>
-          val sql = s"insert into $tabla_factor (tipo_tramite_id, canal_id, factor) values (?,?,?) returning id"
-          var sqlHistorico = s"insert into $tabla_factor_historico (tipo_tramite_id, canal_id, factor) values (?,?,?)"
+        case (tipo_tramite_id, tipo_interaccion_id, factor) =>
+          val sql = s"insert into $tabla_factor (tipo_tramite_id, tipo_interaccion_id, factor) values (?,?,?) returning id"
+          var sqlHistorico = s"insert into $tabla_factor_historico (tipo_tramite_id, tipo_interaccion_id, factor) values (?,?,?)"
           val parametros = ArrayBuffer.empty[Any]
           parametros += tipo_tramite_id
-          parametros += canal_id
+          parametros += tipo_interaccion_id
           parametros += factor
           for {
           i <- pool.sendPreparedStatement(sqlHistorico, parametros)
@@ -402,24 +402,24 @@ class TipoTramiteController @Inject()(cc: ControllerComponents)(implicit config:
   implicit val rdsPutFactor = (
     (__ \ 'id).read[Int] and
       (__ \ 'tipo_tramite_id).read[Int] and
-      (__ \ 'canal_id).read[Int] and
+      (__ \ 'tipo_interaccion_id).read[Int] and
       (__ \ 'factor).read[Double]
     ) tupled
 
   def putFactor = Action.async { implicit request =>
     request.body.asJson.map { json =>
       json.validate[(Int, Int, Int, Double)](rdsPutFactor).map {
-        case (id, tipo_tramite_id, canal_id, factor) =>
-          val sqlHistorico = s"insert into $tabla_factor_historico (tipo_tramite_id, canal_id, factor) values (?,?,?) returning id"
-          val sql = s"update $tabla_factor set tipo_tramite_id=?, canal_id=?, factor=? where id = ? returning id"
+        case (id, tipo_tramite_id, tipo_interaccion_id, factor) =>
+          val sqlHistorico = s"insert into $tabla_factor_historico (tipo_tramite_id, tipo_interaccion_id, factor) values (?,?,?) returning id"
+          val sql = s"update $tabla_factor set tipo_tramite_id=?, tipo_interaccion_id=?, factor=? where id = ? returning id"
           val parametros = ArrayBuffer.empty[Any]
           parametros += tipo_tramite_id
-          parametros += canal_id
+          parametros += tipo_interaccion_id
           parametros += factor
           parametros += id
           val parametrosHistorico = ArrayBuffer.empty[Any]
           parametrosHistorico += tipo_tramite_id
-          parametrosHistorico += canal_id
+          parametrosHistorico += tipo_interaccion_id
           parametrosHistorico += factor
           for {
           i <- pool.sendPreparedStatement(sqlHistorico, parametrosHistorico)
