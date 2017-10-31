@@ -79,8 +79,6 @@ class OpenIdController @Inject()(cc: ControllerComponents)(implicit config: Conf
 
     // Generate nonce
     val nonce = new Nonce
-    println(s"State ${state.getValue}")
-    println(s"Nonce ${nonce.getValue}")
 
     // Se prepara el request a CU
     var authenticationRequest = new AuthenticationRequest(uri, new ResponseType(ResponseType.Value.CODE), scope, clientIdOpenId, new URI(RETURN_URL), state, nonce)
@@ -118,8 +116,7 @@ class OpenIdController @Inject()(cc: ControllerComponents)(implicit config: Conf
       .header("cache-control", "no-cache")
       .asString()
     val jsonU = Json.parse(responseCU2.getBody).asInstanceOf[JsObject]
-    println(responseCU2.getBody)
-    //{ "sub": "2", "RolUnico": { "numero": 55555555, "DV": "5", "tipo": "RUN" }, "name": { "nombres": ['Maria', 'Carmen', 'De', 'Los', 'Angeles'], "apellidos": ['Del', ' Rio', 'Gonzalez'] } }
+     //{ "sub": "2", "RolUnico": { "numero": 55555555, "DV": "5", "tipo": "RUN" }, "name": { "nombres": ['Maria', 'Carmen', 'De', 'Los', 'Angeles'], "apellidos": ['Del', ' Rio', 'Gonzalez'] } }
     val rut = (jsonU \ "RolUnico" \ "numero").get.as[Int] + "-" + (jsonU \ "RolUnico" \ "DV").get.as[String]
     var sql = s"select id,ministerio_id, subsecretaria_id, institucion_id from usuario where habilitado = true and rut ='" + rut + "'"
     pool.sendQuery(sql).map(qr => {
@@ -130,7 +127,7 @@ class OpenIdController @Inject()(cc: ControllerComponents)(implicit config: Conf
     }).map(row => {
       if (!row.isEmpty) {
         val fila = row.get
-        Redirect("/").withSession("usuario" -> fila(0).asInstanceOf[Int].toString, "ministerio_id"->fila(1).asInstanceOf[Int].toString,"subsecretaria_id"->fila(2).asInstanceOf[Int].toString,"institucion_id"->fila(3).asInstanceOf[Int].toString)
+        Redirect("/").withSession("usuario" -> fila(0).asInstanceOf[Int].toString, "ministerio_id"->fila(1).asInstanceOf[Int].toString,"subsecretaria_id"->fila(2).asInstanceOf[Int].toString,"institucion_id"->fila(3).asInstanceOf[Int].toString,"session_token"->accessToken)
       }
       else
         Redirect("/")
@@ -157,10 +154,17 @@ class OpenIdController @Inject()(cc: ControllerComponents)(implicit config: Conf
   }
 
 
-  def logout = Action {
-
-    Redirect("/").withNewSession
+  def logout = Action.async { implicit request =>
+    Future {
+      println(s"Logout ${request.session.get("usuario").isEmpty}")
+      if (request.session.get("usuario").isEmpty)
+        Redirect("/")
+      else
+        //Redirect("https://api.claveunica.gob.cl/api/v1/accounts/app/logout").withNewSession
+        Redirect("/").withNewSession
+    }
   }
+
 
 
 }
