@@ -22,7 +22,7 @@ DELETE  /api/usuario/$id<[0-9]+>    controllers.UsuarioController.delete(id: Int
 GET     /api/usuario/sesion         controllers.UsuarioController.sesion()
 
 
-GET     /api/institucion                controllers.InstitucionController.get(inicio : Int ?=0, cuantos : Int ?=10, orden : String ?="id", tipoOrden: String ?="desc", habilitado: Option[Boolean], id : Option[Int], nombre : Option[String], subsecretaria_id : Option[Int])
+GET     /api/institucion                controllers.InstitucionController.get(inicio : Int ?=0, cuantos : Int ?=10, orden : String ?="id", tipoOrden: String ?="desc", habilitado: Option[Boolean], id : Option[Int], nombre : Option[String], ministerio_id : Option[Int], subsecretaria_id : Option[Int])
 POST    /api/institucion                controllers.InstitucionController.post()
 PUT     /api/institucion                controllers.InstitucionController.put()
 DELETE  /api/institucion/$id<[0-9]+>    controllers.InstitucionController.delete(id: Int)

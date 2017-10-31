@@ -339,7 +339,7 @@ class EjecutorExcelActor extends EjecutorBaseActor with ActorLogging {
               val factor = factores.get(codigoPMG)
 
               if (tipoTramite.isEmpty) {
-                bitacora(recepcion.id, "ERROR", s"Tipo de trámite no existe en la fila ${currentRow.getRowNum}", "procesamiento")
+                bitacora(recepcion.id, "ERROR", s"Tipo de trámite $codigoPMG no existe en la fila ${currentRow.getRowNum}", "procesamiento")
                 errores = errores + 1
                 error = true
               }
@@ -350,11 +350,11 @@ class EjecutorExcelActor extends EjecutorBaseActor with ActorLogging {
                   (mascaraUsuario._1 != 0 && (mascaraTipoTramite._1 != mascaraUsuario._1))){
                   error = true
                   errores = errores + 1
-                  bitacora(recepcion.id, "ERROR", s"El usuario no está autorizado para procesar el trámite en la fila ${currentRow.getRowNum}", "procesamiento")
+                  bitacora(recepcion.id, "ERROR", s"El usuario no está autorizado para procesar el trámite  $codigoPMG en la fila ${currentRow.getRowNum}", "procesamiento")
                 }
               }
               if (total != canalWeb + presencial + callCenter) {
-                bitacora(recepcion.id, "ERROR", s"El total de trámites no coincide con la sumatoria de los canales en la fila ${currentRow.getRowNum}", "procesamiento")
+                bitacora(recepcion.id, "ERROR", s"El total para el trámite $codigoPMG, no coincide con la sumatoria de los canales en la fila ${currentRow.getRowNum}", "procesamiento")
                 errores = errores + 1
                 error = true
               }

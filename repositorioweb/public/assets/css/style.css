@@ -2186,7 +2186,11 @@ Pricing tables
 }
 
 .btn.active {
-    display: none;
+   display: none;
+ }
+
+.btn-group > .btn.active {
+  display: block;
 }
 
 .btn span:nth-of-type(1)  {

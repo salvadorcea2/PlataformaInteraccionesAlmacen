@@ -18,7 +18,7 @@ class InstitucionController @Inject()(cc: ControllerComponents)(implicit config:
 
   val tabla = "institucion"
 
-  def get(inicio: Int, cuantos: Int, orden: String, tipoOrden: String, habilitado: Option[Boolean], id: Option[Int], nombre: Option[String], subsecretaria_id: Option[Int]) = Action.async { implicit request =>
+  def get(inicio: Int, cuantos: Int, orden: String, tipoOrden: String, habilitado: Option[Boolean], id: Option[Int], nombre: Option[String], ministerio_id : Option[Int], subsecretaria_id: Option[Int]) = Action.async { implicit request =>
 
     try {
       val parametros = ArrayBuffer.empty[Any]
@@ -46,6 +46,14 @@ class InstitucionController @Inject()(cc: ControllerComponents)(implicit config:
         sqlCuantos = s"$sqlCuantos $clausula habilitado = ?"
         clausula = "and"
       })
+
+      if (subsecretaria_id.isEmpty)
+        ministerio_id.foreach(m => {
+          sql = s"$sql $clausula id in (select i.id from institucion i, subsecretaria s, ministerio m  where m.id = $m and s.ministerio_id=m.id and i.subsecretaria_id = s.id)"
+          sqlCuantos = s"$sqlCuantos $clausula id in (select i.id from institucion i, subsecretaria s, ministerio m  where m.id = $m and s.ministerio_id=m.id and i.subsecretaria_id = s.id)"
+          clausula = "and"
+
+        })
       subsecretaria_id.foreach(s => {
         parametros += s
         sql = s"$sql $clausula subsecretaria_id = ?"
