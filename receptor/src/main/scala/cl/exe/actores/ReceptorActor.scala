@@ -308,24 +308,22 @@ class EjecutorExcelActor extends EjecutorBaseActor with ActorLogging {
               case e: Exception =>
                 0
             }
-            cell = cellIterator.next()
-              val presencial = try {
+            val presencial = try {cell = cellIterator.next()
+
                 if (cell.getCellTypeEnum == CellType.STRING) cell.getStringCellValue.trim.toInt else cell.getNumericCellValue().toInt
               }
               catch {
                 case e: Exception =>
                   0
               }
-             cell = cellIterator.next()
-              val canalWeb = try {
+             val canalWeb = try {cell = cellIterator.next()
                 if (cell.getCellTypeEnum == CellType.STRING) cell.getStringCellValue.trim.toInt else cell.getNumericCellValue().toInt
               }
               catch {
                 case e : Exception =>
                   0
               }
-              cell = cellIterator.next()
-              val callCenter = try {
+            val callCenter = try {cell = cellIterator.next()
                 if (cell.getCellTypeEnum == CellType.STRING) cell.getStringCellValue.trim.toInt else cell.getNumericCellValue().toInt
               }
               catch {
