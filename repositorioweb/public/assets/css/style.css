@@ -210,6 +210,11 @@ td{
 .tile.purple{
     background-color: #972cf1;
 }
+
+.help-block {
+  color: red;
+}
+
 /**panels**/
 .panel-default{
     border: 0px;
