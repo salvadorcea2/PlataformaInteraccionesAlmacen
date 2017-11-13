@@ -287,10 +287,11 @@ class EjecutorExcelActor extends EjecutorBaseActor with ActorLogging {
 
       while (iterator.hasNext()) {
 
-        val currentRow = iterator.next()
-        val cellIterator = currentRow.iterator()
+
 
           try {
+            val currentRow = iterator.next()
+            val cellIterator = currentRow.iterator()
             var cell = cellIterator.next()
             var error = false
             val codigoPMG = if (cell.getCellTypeEnum == CellType.STRING) cell.getStringCellValue() else cell.getNumericCellValue.toInt.toString
@@ -377,7 +378,7 @@ class EjecutorExcelActor extends EjecutorBaseActor with ActorLogging {
                 for (i <- 0 to 2) {
                   val total = totales(i)
                   val canal = canales(i)
-                  if (total > 0)
+                  if (total >= 0)
                    periodicidad match {
                      case 4 => inserciones = inserciones + insertar(recepcion, tipoTramite.get, periodicidad,factor, fechaMensual, fechaAnual, canal,total)
                      case 5 => for (i <- 1 to 12 ){
@@ -396,8 +397,8 @@ class EjecutorExcelActor extends EjecutorBaseActor with ActorLogging {
           catch {
             case e: Exception =>
               log.error(e,"Error al procesar la linea")
-              println("FIN???")
-              iterator.next()
+              log.error("FIN???")
+              //iterator.next()
           }
 
       }
