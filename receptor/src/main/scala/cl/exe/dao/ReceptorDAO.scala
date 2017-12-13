@@ -19,6 +19,7 @@ object ReceptorDAO extends DAO[Receptor, EntidadId] {
     Receptor(id = r("id").asInstanceOf[Int], nombre = r("nombre").asInstanceOf[String],
       descripcion = r("nombre").asInstanceOf[String], canalTransmisionId = r("canal_transmision_id").asInstanceOf[Int],
       formatoId = r("formato_id").asInstanceOf[Int], plantillaId = r("plantilla_recepcion_id").asInstanceOf[Int], periodicidadId = r("periodicidad_id").asInstanceOf[Int],
+      usuarioId=r("usuario_id").asInstanceOf[Int],
       propiedades = hstoreToMap(r("propiedades").asInstanceOf[String]),habilitado = r("habilitado").asInstanceOf[Boolean])
 
   }

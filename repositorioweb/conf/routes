@@ -82,7 +82,8 @@ GET   /api/recepcion/factores/$id<[0-9]+>      controllers.RecepcionController.g
 GET     /count                      controllers.CountController.count
 # An example controller showing how to write asynchronous code
 GET     /message                    controllers.AsyncController.message
-GET     /test                       controllers.TestController.test
+POST    /autenticacion                       controllers.TestController.autenticacion
+GET     /consulta/$fecha<[0-9]{8}>      controllers.TestController.consulta(fecha : Int)
 # Map static resources from the /public folder to the /assets URL path
 GET     /*file               controllers.Assets.versioned(path="/public", file: Asset)
 

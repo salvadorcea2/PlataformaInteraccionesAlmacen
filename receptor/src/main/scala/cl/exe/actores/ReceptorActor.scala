@@ -1,14 +1,20 @@
 package cl.exe.actores
 
-import java.io.{File, FileInputStream}
+import java.io.{File, FileInputStream, PrintWriter}
+import java.nio.file.Paths
 import java.sql.{Date, Timestamp}
 import java.text.SimpleDateFormat
 
-import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, PoisonPill, Props, RootActorPath, Terminated}
+import akka.actor._
 import akka.cluster.{Cluster, Member, MemberStatus}
 import akka.cluster.ClusterEvent._
 import akka.cluster.singleton.{ClusterSingletonProxy, ClusterSingletonProxySettings}
+import akka.http.scaladsl.Http
+import akka.http.scaladsl.model.StatusCodes.Success
+import akka.http.scaladsl.model.headers.{Authorization, OAuth2BearerToken}
+import akka.http.scaladsl.model._
 import akka.pattern.{ask, pipe}
+import akka.util.ByteString
 import cl.exe.modelo.{Entidad, Recepcion, Receptor, TipoTramite}
 import cl.exe.modelo.Entidad.EntidadId
 import cl.exe.modelo.TipoTramite
@@ -22,14 +28,18 @@ import cl.exe.actores._
 import cl.exe.dao.Cache
 import cl.exe.dao.ReceptorDAO.bitacora
 import com.github.mauricio.async.db.QueryResult
+import com.markatta.akron.{CronExpression, CronTab}
 import org.apache.poi.ss.usermodel.CellType
 import org.apache.poi.xssf.usermodel.XSSFWorkbook
-import org.joda.time.{DateTime, Days, Months}
+import org.joda.time.{DateTime, Days, Months, Period}
 
 import scala.collection.mutable
 import scala.concurrent.{Await, Future}
 import scala.io.Source
 import scala.concurrent.duration._
+import scala.util.{Failure, Success}
+import spray.json._
+import cl.exe.main.ReceptorMain.{materializer, system}
 
 /*
 Agregar en la bitacora la info total del procesamiento
@@ -125,7 +135,7 @@ abstract class EjecutorBaseActor extends Actor with ActorLogging {
   }
 }
 
-class EjecutorLogActor extends EjecutorBaseActor with ActorLogging {
+class EjecutorLogActor extends EjecutorBaseActor {
 
 
   def receive = {
@@ -189,7 +199,7 @@ class EjecutorLogActor extends EjecutorBaseActor with ActorLogging {
   }
 }
 
-class EjecutorExcelActor extends EjecutorBaseActor with ActorLogging {
+class EjecutorExcelActor extends EjecutorBaseActor {
 
 
   val sdf = new SimpleDateFormat("yyyyMMdd")
@@ -414,6 +424,17 @@ class EjecutorExcelActor extends EjecutorBaseActor with ActorLogging {
 }
 
 
+class EjecutorMdsActor extends EjecutorBaseActor {
+
+
+  def receive = {
+    case recepcion: Recepcion =>
+      log.info(recepcion.archivo)
+
+  }
+}
+
+
 class AdministradorActor extends Actor with ActorLogging {
   var ejecutores = IndexedSeq.empty[ActorRef]
   var turno = 0
@@ -511,6 +532,92 @@ class ReceptorArchivoActor(receptor: Receptor) extends ReceptorActor(receptor) {
       })
       contextoCamel.start
     })
+  }
+
+
+}
+
+
+class ReceptorMdsActor(receptor: Receptor) extends ReceptorActor(receptor) {
+
+  object MDSGet
+
+  override def preStart = {
+    super.preStart()
+
+
+     receptor.propiedades.get("cron").foreach(cron => {
+      context.actorSelection("/user/crontab").resolveOne( 5 seconds).map(crontab => {
+        crontab ! CronTab.Schedule(self, MDSGet, CronExpression(cron))
+
+      })
+     })
+
+  }
+
+  override def receive = {
+    case MDSGet =>
+      val archivo = ""
+      receptor.propiedades.get("urlAutenticacion").foreach(urlAutenticacion  => {
+        val s = "{\"grant_type\":\"client_credentials\",\"client_id\":\"81\",\"client_secret\":\"YWvrCPJD\"}"
+        val e = HttpEntity(contentType = ContentTypes.`application/json`, string = s)
+        Http().singleRequest(HttpRequest(uri = urlAutenticacion, method = HttpMethods.POST, entity = e ))
+          .onComplete {
+            case scala.util.Success(response) =>
+            response match {
+            case HttpResponse(StatusCodes.OK, headers, entity, _) =>
+              entity.dataBytes.runFold(ByteString(""))(_ ++ _).foreach { body =>
+                 log.info(body.utf8String)
+                 val jsonRes =  body.utf8String.parseJson.asInstanceOf[JsObject]
+                 val token = jsonRes.fields("access_token").toString
+                receptor.propiedades.get("url").foreach(url  => {
+                  val date = new DateTime
+                  date.plus(Period.days(-1))
+                  val sdt = new SimpleDateFormat("yyyyMMdd")
+                  val dia = sdt.format(date.toDate)
+                  val e = HttpEntity(contentType = ContentTypes.`application/json`, string = s)
+                  val a = Authorization(OAuth2BearerToken(token))
+
+                  Http().singleRequest(HttpRequest(uri = url+"/"+dia, method = HttpMethods.GET, entity = e, headers = List(a)))
+                    .onComplete{
+                      case scala.util.Success(response) =>
+                        response match {
+                          case HttpResponse(StatusCodes.OK, headers, entity, _) =>
+                            entity.dataBytes.runFold(ByteString(""))(_ ++ _).foreach { body =>
+                              val jsonRes = body.utf8String.parseJson.asInstanceOf[JsObject]
+                              log.info(body.utf8String)
+                              val directorio = s"${receptor.propiedades.get("directorioProcesamiento").get}/${receptor.usuarioId}"
+                              Paths.get(directorio).toFile.mkdirs()
+                              val archivo =  directorio+ "/" + dia + ".json"
+                              val pw = new PrintWriter(new File(archivo))
+                              pw.write(body.utf8String)
+                              pw.close
+                              procesarArchivo(archivo)
+                            }
+
+                          case resp@HttpResponse(code, _, _, _) =>
+                            log.info("Request failed, response code: " + code)
+                            resp.discardEntityBytes()
+                        }
+                      case Failure(e)   => log.error(e.getMessage,e)
+                    }
+                })
+
+                }
+            case resp @ HttpResponse(code, _, _, _) =>
+              log.info("Request failed, response code: " + code)
+              resp.discardEntityBytes()
+            }
+            case Failure(e)   => log.error(e.getMessage,e)
+          }
+
+      })
+
+    case ce:CronTab.Scheduled =>
+       log.info("Scheduled")
+
+    case e =>
+      super.receive(e)
   }
 
 

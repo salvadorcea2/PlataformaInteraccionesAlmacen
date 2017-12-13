@@ -13,6 +13,8 @@ receptorDTEntrada/
 receptorDTProcesamiento/
 receptorExcelEntrada/
 receptorExcelProcesamiento/
+receptorMDSEntrada/
+receptorMDSProcesamiento/
 /sql/
 tramites/
 /jars/
