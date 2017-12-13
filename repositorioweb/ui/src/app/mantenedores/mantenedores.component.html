@@ -1,0 +1,121 @@
+<div id="wrapper">
+  <div class="content-wrapper container">
+    <div class="row">
+      <div class="col-md-8">
+        <div class="page-title">
+          <h1>Listado de Mantenedores</h1>
+        </div>
+      </div>
+      <div class="col-md-4 a-right">
+        <a routerLink="/mantenedores/nuevo" role="button" class="btn btn-success btn-lg"><i class="fa fa-plus"></i> Agregar Mantenedor</a>
+      </div>
+    </div><!-- end .page title-->
+    <app-alertas></app-alertas>
+    <div class="row">
+      <div class="col-md-12">
+        <div class="panel panel-default ">
+          <!-- Start .panel -->
+          <div class="panel-heading">
+            <form name="frm" #frm="ngForm" (ngSubmit)="onFiltroSubmit(frm)">
+              <div class="row">
+                <div class="col-md-4 a-right">
+                  <label class="control-label">Mantenedor (*)</label>
+                  <select class="form-control m-b" name="tabla" #tabla="ngModel" [(ngModel)]="_buscador.filtro.tabla" required>
+                    <option value="">- Seleccionar -</option>
+                    <option *ngFor="let item of _lista_mantenedores" [value]="item.tabla">{{ item.singular }}</option>
+                  </select>
+                  <p class="help-block" *ngIf="tabla.touched && !tabla.valid">Seleccione un Mantenedor!</p>
+                </div>
+                <div class="col-md-4 a-right">
+                  <label class="control-label">Filtro por Nombre</label>
+                  <input class="form-control" name="nombre" [(ngModel)]="_buscador.filtro.nombre">
+                </div>
+                <div class="col-md-4 a-right">
+                  <label class="control-label">Filtro por Estado</label>
+                  <select class="form-control m-b" name="habilitado" [(ngModel)]="_buscador.filtro.habilitado">
+                    <option value="">Todos</option>
+                    <option value="true">Habilitado</option>
+                    <option value="false">Deshabilitado</option>
+                  </select>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-md-12 a-right">
+                  <button type="submit" class="btn btn-primary" [disabled]="!frm.valid">Buscar</button>
+                </div>
+              </div>
+            </form>
+          </div>
+          <div class="panel-body">
+            <div *ngIf="_items.length === 0">
+              <alert [type]="'warning'" [dismissible]="false">La búsqueda no arrojó resultados</alert>
+            </div>
+            <div *ngIf="_items.length > 0">
+
+              <div class="table-responsive">
+                <table id="table-paginated" class="table table-bordered" cellspacing="0" width="100%">
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Nombre</th>
+                      <th class="text-center">Estado</th>
+                      <th>&nbsp;</th>
+                    </tr>
+                  </thead>
+                  <tfoot>
+                    <tr>
+                      <th>ID</th>
+                      <th>Nombre</th>
+                      <th class="text-center">Estado</th>
+                      <th>&nbsp;</th>
+                    </tr>
+                  </tfoot>
+                  <tbody>
+                  <tr *ngFor="let item of _items">
+                    <td>{{ item.id }}</td>
+                    <td class="wrapword">{{ item.nombre }}</td>
+                    <td class="text-center">
+                      <span class="glyphicon glyphicon-remove-sign" *ngIf="!item.habilitado" style="color: red;" aria-hidden="true"></span>
+                      <span class="glyphicon glyphicon-ok-sign green" *ngIf="item.habilitado" style="color: lightgreen;" aria-hidden="true"></span>
+                    </td>
+                    <td class="text-center">
+                      <a [routerLink]="['/mantenedores', _buscador.filtro.tabla, item.id, 'ver']" class="btn btn-default" aria-label="Left Align" title="Ver">
+                        <span class="glyphicon glyphicon-eye-open" aria-hidden="true"></span>
+                      </a>
+                      <a [routerLink]="['/mantenedores', _buscador.filtro.tabla, item.id, 'editar']" class="btn btn-default" aria-label="Left Align" title="Editar">
+                        <span class="glyphicon glyphicon-edit" aria-hidden="true"></span>
+                      </a>
+                      <button (click)="onEliminar(modalEliminar, item)" type="button" class="btn btn-default" aria-label="Left Align" title="Eliminar">
+                        <span class="glyphicon glyphicon-trash" aria-hidden="true"></span>
+                      </button>
+                    </td>
+                  </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <app-paginador [_buscador]="_buscador" (paginadorCambia)="onPaginadorCambia($event)"></app-paginador>
+            </div>
+
+          </div>
+        </div><!-- End .panel -->
+      </div><!--end .col-->
+    </div><!--end .row-->
+  </div>
+</div>
+
+<ng-template #modalEliminar>
+  <div class="modal-header">
+    <h4 class="modal-title pull-left">Eliminar Mantenedor</h4>
+    <button type="button" class="close pull-right" aria-label="Close" (click)="modalRef.hide()">
+      <span aria-hidden="true">&times;</span>
+    </button>
+  </div>
+  <div class="modal-body">
+    Usted está a punto de eliminar el mantenedor "{{_item_eliminar.nombre}}", ¿Está seguro que desea continuar?
+  </div>
+  <div class="modal-footer">
+    <button type="button" class="btn btn-default" (click)="modalRef.hide()">Cancelar</button>
+    <button type="button" class="btn btn-default" (click)="_onEliminar()">Eliminar</button>
+  </div>
+</ng-template>

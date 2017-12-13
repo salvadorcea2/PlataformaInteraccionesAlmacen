@@ -1,0 +1,37 @@
+<nav class="navbar-aside navbar-static-side" role="navigation">
+  <div class="sidebar-collapse nano">
+    <div class="nano-content">
+      <ul class="nav metismenu" id="side-menu">
+
+        <li routerLinkActive="active" *ngIf="authService.isUsuario()">
+          <a routerLink="/recepciones"><i class="fa fa-th-large"></i> <span class="nav-label">Recepciones</span></a>
+        </li>
+        <li routerLinkActive="active" *ngIf="authService.isAdmin()">
+          <a routerLink="/usuarios"><i class="fa fa-users"></i> <span class="nav-label">Usuarios</span></a>
+        </li>
+        <li routerLinkActive="active" *ngIf="authService.isAdmin()">
+          <a routerLink="/ministerios"><i class="fa fa-university"></i> <span class="nav-label">Ministerios</span></a>
+        </li>
+        <li routerLinkActive="active" *ngIf="authService.isAdmin()">
+          <a routerLink="/subsecretarias"><i class="fa fa-university"></i> <span class="nav-label">Subsecretarías</span></a>
+        </li>
+        <li routerLinkActive="active" *ngIf="authService.isAdmin()">
+          <a routerLink="/instituciones"><i class="fa fa-university"></i> <span class="nav-label">Instituciones</span></a>
+        </li>
+        <li routerLinkActive="active" *ngIf="authService.isAdmin()">
+          <a routerLink="/tramites"><i class="fa fa-file-text"></i> <span class="nav-label">Trámites</span></a>
+        </li>
+        <li routerLinkActive="active" *ngIf="authService.isAdmin()">
+          <a routerLink="/receptores"><i class="fa fa-inbox"></i> <span class="nav-label">Receptores</span></a>
+        </li>
+        <li routerLinkActive="active" *ngIf="authService.isAdmin()">
+          <a routerLink="/plantillas"><i class="fa fa-file"></i> <span class="nav-label">Plantillas</span></a>
+        </li>
+        <li routerLinkActive="active" *ngIf="authService.isAdmin()">
+          <a routerLink="/mantenedores"><i class="fa fa-database"></i> <span class="nav-label">Mantenedores</span></a>
+        </li>
+      </ul>
+
+    </div>
+  </div>
+</nav>

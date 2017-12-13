@@ -1,0 +1,138 @@
+<div id="wrapper">
+  <div class="content-wrapper container">
+    <div class="row">
+      <div class="col-md-10">
+        <div class="page-title">
+          <h1>Listado de Cargas Realizadas</h1>
+        </div>
+      </div>
+      <div class="col-md-2 a-right">
+        <a routerLink="/recepciones/upload" role="button" class="btn btn-success btn-lg"><i class="fa fa-user-plus"></i> Subir Archivo</a>
+      </div>
+    </div><!-- end .page title-->
+    <app-alertas></app-alertas>
+    <div class="row">
+      <div class="col-md-12">
+        <div class="panel panel-default ">
+          <!-- Start .panel -->
+          <div class="panel-heading">
+            <form name="frm" #frm="ngForm" (ngSubmit)="onFiltroSubmit(frm)">
+              <div class="row">
+                <div class="col-md-4 a-right">
+                  <label class="control-label">Filtro por Ministerio</label>
+                  <select class="form-control m-b" name="ministerio_id" [(ngModel)]="_buscador.filtro.ministerio_id">
+                    <option value="">Todos</option>
+                    <option *ngFor="let item of _lista_ministerios" [value]="item.id">{{item.nombre}}</option>
+                  </select>
+                </div>
+                <div class="col-md-4 a-right">
+                  <label class="control-label">Filtro por Subsecretaría</label>
+                  <select class="form-control m-b" name="subsecretaria_id" [(ngModel)]="_buscador.filtro.subsecretaria_id">
+                    <option value="">Todas</option>
+                    <option *ngFor="let item of _lista_subsecretarias | fromlista:'ministerio_id':_buscador.filtro.ministerio_id" [value]="item.id">{{item.nombre}}</option>
+                  </select>
+                </div>
+                <div class="col-md-4 a-right">
+                  <label class="control-label">Filtro por Institución</label>
+                  <select class="form-control m-b" name="institucion_id" [(ngModel)]="_buscador.filtro.institucion_id">
+                    <option value="">Todas</option>
+                    <option *ngFor="let item of _lista_instituciones | fromlista:'subsecretaria_id':_buscador.filtro.subsecretaria_id" [value]="item.id">{{item.nombre}}</option>
+                  </select>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-md-4 a-right">
+                  <label class="control-label">Filtro por Estado</label>
+                  <select class="form-control m-b" name="filtroEstado" [(ngModel)]="_buscador.filtro.estado">
+                    <option value="">Todos</option>
+                    <option value="recepcionada">Recepcionada</option>
+                    <option value="procesada">Procesada</option>
+                    <option value="procesada_errores">Procesada con Errores</option>
+                    <option value="finalizada">Finalizada</option>
+                  </select>
+                </div>
+                <div class="col-md-4 a-right">
+                  <label class="control-label">Filtro Fecha desde</label>
+
+                    <div class="text-right">
+                      <input type="text" name="ffi" [(ngModel)]="_buscador_ffi" id="ffi" class="form-control" [maxDate]="maxDate" #ffi="bsDatepicker" bsDatepicker [bsConfig]="bsConfig">
+
+                      <!--<input class="form-control text-right" placeholder="dd/mm/yyyy"
+                             id="ffi" name="ffi" [(ngModel)]="filtroFechaInicio" ngbDatepicker #ffi="ngbDatepicker" (focus)="onFiltroFocus($event)" (blur)="onFiltroBlur($event)" (keypress)="onKeyPress($event)" (change)="onFiltroCambia($event)">-->
+                    </div>
+
+                </div>
+                <div class="col-md-4 a-right">
+                  <label class="control-label">Filtro Fecha hasta</label>
+
+                  <div class="text-right">
+                    <input type="text" name="fft" [(ngModel)]="_buscador_fft" id="fft" class="form-control" [maxDate]="maxDate" #fft="bsDatepicker" bsDatepicker [bsConfig]="bsConfig">
+                    <!--<input class="form-control text-right" placeholder="dd/mm/yyyy"
+                           id="fft" name="fft" [(ngModel)]="filtroFechaTermino" ngbDatepicker #ffh="ngbDatepicker" (focus)="ffh.toggle()" (keypress)="onKeyPress($event)">-->
+                  </div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-md-12 a-right">
+                  <button type="submit" class="btn btn-primary" [disabled]="!frm.valid">Buscar</button>
+                </div>
+              </div>
+            </form>
+          </div>
+          <div class="panel-body">
+            <div *ngIf="_items.length === 0">
+              <alert [type]="'warning'" [dismissible]="false">La búsqueda no arrojó resultados</alert>
+            </div>
+            <div *ngIf="_items.length > 0">
+              <div class="table-responsive">
+                <table id="table-paginated" class="table table-bordered" cellspacing="0" width="100%">
+                  <thead>
+                  <tr>
+                    <th>ID</th>
+                    <!--<th>Usuario</th>-->
+                    <th>Archivo</th>
+                    <th>Fecha</th>
+                    <th>Estado</th>
+                    <th class="text-center">Bitacora - Factores</th>
+                  </tr>
+                  </thead>
+                  <tfoot>
+                  <tr>
+                    <th>ID</th>
+                    <!--<th>Usuario</th>-->
+                    <th>Archivo</th>
+                    <th>Fecha</th>
+                    <th>Estado</th>
+                    <th class="text-center">Bitacora - Factores</th>
+                  </tr>
+                  </tfoot>
+                  <tbody>
+                  <tr *ngFor="let item of _items">
+                    <td>{{ item.id }}</td>
+                    <!--<td class="wrapword">{{ item.nombres }} {{ item.apellidos }}</td>-->
+                    <td class="wrapword">{{ item.archivo }}</td>
+                    <td>{{ item.fecha_creacion }}</td>
+                    <td>{{ item.estado }}</td>
+                    <td class="text-center">
+                      <a [routerLink]="['/recepciones',item.id,'bitacora']" class="btn btn-default" aria-label="Left Align" title="Bitacora Recepción">
+                        <span class="glyphicon glyphicon-book" aria-hidden="true"></span>
+                      </a>
+                      <!--<a [routerLink]="['/recepciones',item.id,'detalle']" class="btn btn-default" aria-label="Left Align" title="Detalle Recepción">
+                        <span class="glyphicon glyphicon-list" aria-hidden="true"></span>
+                      </a>-->
+                      <a [routerLink]="['/recepciones',item.id,'factores']" class="btn btn-default" aria-label="Left Align" title="Factores">
+                        <span class="glyphicon glyphicon-sound-5-1" aria-hidden="true"></span>
+                      </a>
+                    </td>
+                  </tr>
+                  </tbody>
+                </table>
+              </div>
+              <app-paginador [_buscador]="_buscador" (paginadorCambia)="onPaginadorCambia($event)"></app-paginador>
+            </div>
+          </div>
+        </div><!-- End .panel -->
+      </div><!--end .col-->
+    </div><!--end .row-->
+  </div>
+</div>

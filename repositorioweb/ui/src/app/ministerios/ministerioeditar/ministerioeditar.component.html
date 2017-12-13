@@ -1,0 +1,58 @@
+<div id="wrapper">
+  <div class="row m-t-30">
+    <div class="col-md-6 col-md-offset-3">
+      <app-alertas></app-alertas>
+      <div class="panel panel-default margin-b-30">
+        <!-- Start .panel -->
+        <div class="panel-heading">
+          <h4 class="panel-title">
+            <ng-container *ngIf="!item.id">Agregar Nuevo </ng-container>
+            <ng-container *ngIf="item.id">Editar </ng-container>
+            Ministerio</h4>
+        </div>
+        <div class="panel-body">
+          <form class="form-horizontal" (ngSubmit)="onSubmit(f)" #f="ngForm">
+            <div class="form-group m-t-15">
+              <div class="col-md-12">
+                <label for="nombre">Nombre</label>
+                <div class="input-group input-group-lg">
+                  <span class="input-group-addon" id="sizing-addon1"><i class="fa fa-bars fa-fw"></i></span>
+                  <input type="text" class="form-control" id="nombre" name="nombre" #nombre="ngModel" placeholder="Ingresa Nombre" [(ngModel)]="item.nombre" aria-describedby="sizing-addon1" pattern="[a-zA-ZñÑáéíóúÁÉÍÓÚ0-9 ]*" noSpaces>
+                </div>
+                <p class="help-block" *ngIf="nombre.touched && !nombre.valid">Nombre es requerido, por favor ingrese un nombre válido</p>
+              </div>
+            </div>
+            <div class="form-group m-t-15">
+              <div class="col-md-12">
+                <label for="id_cha">ID Cha</label>
+                <div class="input-group input-group-lg">
+                  <span class="input-group-addon" id="sizing-addon1"><i class="fa fa-bars fa-fw"></i></span>
+                  <input type="text" class="form-control" id="id_cha" name="id_cha" #id_cha="ngModel" placeholder="Ingresa ID CHA" [(ngModel)]="item.id_cha" aria-describedby="sizing-addon1" noSpaces>
+                </div>
+                <p class="help-block" *ngIf="id_cha.touched && !id_cha.valid">ID CHA es requerido, por favor ingrese un ID CHA válido</p>
+              </div>
+            </div>
+            <div class="form-group m-b-30">
+              <div class="col-sm-12">
+                <div><label>Habilitado</label></div>
+                <div class="btn-group">
+                  <label class="btn btn-primary" name="habilitado0" [(ngModel)]="item.habilitado" [btnRadio]="false">No</label>
+                  <label class="btn btn-primary" name="habilitado1" [(ngModel)]="item.habilitado" [btnRadio]="true">Si</label>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-group m-t-30 m-b-0">
+              <div class="col-md-6">
+                <button type="submit" class="btn btn-success btn-lg" [disabled]="!f.valid"><i class="fa fa-floppy-o fa-fw"></i> Guardar</button>
+              </div>
+              <div class="col-md-6 a-right">
+                <a routerLink="/ministerios" role="button" class="btn btn-danger btn-lg"><i class="fa fa-times fa-fw"></i> Cancelar</a>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

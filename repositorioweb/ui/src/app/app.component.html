@@ -1,0 +1,8 @@
+<!-- Topbar -->
+<app-topbar></app-topbar>
+<section class="page">
+  <!-- Menu -->
+  <app-menu *ngIf="authService.isAuth()"></app-menu>
+  <!-- Componente -->
+  <router-outlet></router-outlet>
+</section>

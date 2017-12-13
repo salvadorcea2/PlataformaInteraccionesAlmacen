@@ -1,0 +1,87 @@
+<div id="wrapper">
+  <div class="content-wrapper container">
+    <div class="row">
+      <div class="col-sm-12">
+        <div class="page-title">
+          <h1>Detalle Recepción #{{ _component_entidad_id }}</h1>
+        </div>
+      </div>
+    </div><!-- end .page title-->
+    <app-alertas></app-alertas>
+    <div class="row">
+      <div class="col-md-12">
+        <div class="panel panel-default ">
+          <!-- Start .panel -->
+          <div class="panel-heading">
+            <form name="frm" #frm="ngForm" (ngSubmit)="onFiltroSubmit(frm)">
+              <div class="row">
+                <div class="col-md-8 m-t-15">
+                  <a [routerLink]="['/recepciones']" role="button" class="btn btn-success btn-lg"><i class="fa fa-chevron-left"></i> Volver</a>
+                </div>
+                <div class="col-md-2 a-right">
+                  <label class="control-label">Filtro Fecha Inicio</label>
+                  <div class="text-right">
+                    <input type="text" name="ffi" [(ngModel)]="_buscador_ffi" id="ffi" class="form-control" [maxDate]="maxDate" #ffi="bsDatepicker" bsDatepicker [bsConfig]="bsConfig">
+                  </div>
+                </div>
+                <div class="col-md-2 a-right">
+                  <label class="control-label">Filtro Fecha Término</label>
+                  <div class="text-right">
+                    <input type="text" name="fft" [(ngModel)]="_buscador_fft" id="fft" class="form-control" [maxDate]="maxDate" #ffi="bsDatepicker" bsDatepicker [bsConfig]="bsConfig">
+                  </div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-md-12 a-right">
+                  <button type="submit" class="btn btn-primary" [disabled]="!frm.valid">Buscar</button>
+                </div>
+              </div>
+            </form>
+          </div>
+          <div class="panel-body">
+            <div *ngIf="_items.length === 0">
+              <alert [type]="'warning'" [dismissible]="false">La búsqueda no arrojó resultados</alert>
+            </div>
+            <div *ngIf="_items.length > 0">
+              <div class="table-responsive">
+                <table id="table-paginated" class="table table-bordered" cellspacing="0" width="100%">
+                  <thead>
+                  <tr>
+                    <th>Código</th>
+                    <th>Institución</th>
+                    <th>Nombre</th>
+                    <th>Desde</th>
+                    <th>Hasta</th>
+                    <th>Interacciones</th>
+                  </tr>
+                  </thead>
+                  <tfoot>
+                  <tr>
+                    <th>Código</th>
+                    <th>Institución</th>
+                    <th>Nombre</th>
+                    <th>Desde</th>
+                    <th>Hasta</th>
+                    <th>Interacciones</th>
+                  </tr>
+                  </tfoot>
+                  <tbody>
+                  <tr *ngFor="let item of _items">
+                    <td>{{ item.codigo }}</td>
+                    <td class="wrapword">{{ item.institucion_id }} ({{ item.ministerio_id }})</td>
+                    <td class="wrapword">{{ item.nombre }}</td>
+                    <td>{{ item.desde }}</td>
+                    <td>{{ item.hasta }}</td>
+                    <td>{{ item.interacciones }}</td>
+                  </tr>
+                  </tbody>
+                </table>
+              </div>
+              <app-paginador [_buscador]="_buscador" (paginadorCambia)="onPaginadorCambia($event)"></app-paginador>
+            </div>
+          </div>
+        </div><!-- End .panel -->
+      </div><!--end .col-->
+    </div><!--end .row-->
+  </div>
+</div>

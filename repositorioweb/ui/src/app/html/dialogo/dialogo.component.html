@@ -1,0 +1,15 @@
+<div class="modal-body text-center">
+  <ng-container *ngIf="data.tipo === 'loading'">
+    <i class="fa fa-circle-o-notch fa-spin" style="font-size:10em;"></i>
+    <h1>Cargando</h1>
+  </ng-container>
+  <ng-container *ngIf="data.tipo === 'error'">
+    Error
+  </ng-container>
+  <ng-container *ngIf="data.tipo === 'info'">
+    Info
+  </ng-container>
+  <ng-container *ngIf="data.tipo === 'confirmacion'">
+    Confirmación
+  </ng-container>
+</div>
