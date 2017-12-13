@@ -1,0 +1,179 @@
+<div id="wrapper">
+  <div class="row m-t-30">
+    <div class="col-md-6 col-md-offset-3">
+      <app-alertas></app-alertas>
+      <div class="panel panel-default margin-b-30">
+        <!-- Start .panel -->
+        <div class="panel-heading">
+          <h4 class="panel-title"> Detalles Trámite</h4>
+        </div>
+        <div class="panel-body">
+          <div class="form-group m-t-15">
+            <div class="form-group">
+              <label><i class="fa fa-bars fa-fw"></i> ID</label>
+              <div class="m-l-25">{{item.id}}</div>
+            </div>
+            <div class="form-group">
+              <label><i class="fa fa-bars fa-fw"></i> Nombre</label>
+              <div class="m-l-25">{{item.nombre}}</div>
+            </div>
+            <!--<div class="form-group">
+              <label><i class="fa fa-bars fa-fw"></i> Ministerio</label>
+              <div class="m-l-25">{{ministerio | foreignitem:ministerios}}</div>
+            </div>
+            <div class="form-group">
+              <label><i class="fa fa-bars fa-fw"></i> Subsecretaría</label>
+              <div class="m-l-25">{{item}}</div>
+            </div>-->
+            <div class="form-group">
+              <label><i class="fa fa-bars fa-fw"></i> Institución</label>
+              <div class="m-l-25">{{item.institucion_id | foreignitem:_lista_instituciones}}</div>
+            </div>
+            <div class="form-group">
+              <label><i class="fa fa-bars fa-fw"></i> Código PMG</label>
+              <div class="m-l-25">{{item.codigo_pmg}}</div>
+            </div>
+            <div class="form-group">
+              <label><i class="fa fa-bars fa-fw"></i> URL</label>
+              <div class="m-l-25">{{item.url}}</div>
+            </div>
+            <div class="form-group">
+              <label><i class="fa fa-bars fa-fw"></i> Periodicidad</label>
+              <div class="m-l-25">{{item.periodicidad_id | foreignitem:_lista_periodicidades}}</div>
+            </div>
+            <div class="form-group">
+              <label><i class="fa fa-bars fa-fw"></i> Costo</label>
+              <div class="m-l-25">{{item.costo}}</div>
+            </div>
+            <div class="form-group">
+              <label><i class="fa fa-bars fa-fw"></i> Código Simple</label>
+              <div class="m-l-25">{{item.codigo_simple}}</div>
+            </div>
+            <div class="form-group">
+              <label><i class="fa fa-bars fa-fw"></i> Categoría</label>
+              <div class="m-l-25">{{item.categoria_id | foreignitem:_lista_categorias}}</div>
+            </div>
+            <div class="form-group">
+              <label><i class="fa fa-bars fa-fw"></i> Nivel Digitalización</label>
+              <div class="m-l-25">{{item.nivel_digitalizacion_id | foreignitem:_lista_nivelesdigitalizacion}}</div>
+            </div>
+
+            <div class="form-group">
+              <label><i class="fa fa-bars fa-fw"></i> Clave Única</label>
+              <div class="m-l-25">
+                <span class="glyphicon glyphicon-remove-sign" *ngIf="!item.clave_unica" style="color: red;" aria-hidden="true"></span>
+                <span class="glyphicon glyphicon-ok-sign green" *ngIf="item.clave_unica" style="color: lightgreen;" aria-hidden="true"></span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><i class="fa fa-bars fa-fw"></i> Presencial</label>
+              <div class="m-l-25">
+                <span class="glyphicon glyphicon-remove-sign" *ngIf="!item.presencialidad" style="color: red;" aria-hidden="true"></span>
+                <span class="glyphicon glyphicon-ok-sign green" *ngIf="item.presencialidad" style="color: lightgreen;" aria-hidden="true"></span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><i class="fa fa-bars fa-fw"></i> Habilitado</label>
+              <div class="m-l-25">
+                <span class="glyphicon glyphicon-remove-sign" *ngIf="!item.habilitado" style="color: red;" aria-hidden="true"></span>
+                <span class="glyphicon glyphicon-ok-sign green" *ngIf="item.habilitado" style="color: lightgreen;" aria-hidden="true"></span>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label><i class="fa fa-bars fa-fw"></i> Descripción</label>
+              <div class="m-l-25">{{item.descripcion}}</div>
+            </div>
+            <div class="form-group">
+              <label><i class="fa fa-bars fa-fw"></i> Fuente</label>
+              <div class="m-l-25">{{item.fuente}}</div>
+            </div>
+            <div class="form-group">
+              <label><i class="fa fa-bars fa-fw"></i> Barreras Normativas</label>
+              <div class="m-l-25">{{item.barreras_normativas}}</div>
+            </div>
+            <div class="form-group">
+              <label><i class="fa fa-bars fa-fw"></i> Comentarios</label>
+              <div class="m-l-25">{{item.comentarios}}</div>
+            </div>
+            <div class="form-group">
+              <label><i class="fa fa-bars fa-fw"></i> Tabla Factores de Interacciones <a (click)="onAgregarFactor()" class="btn btn-default" aria-label="Left Align" title="Agregar Factor">
+                <span class="glyphicon glyphicon-plus-sign" aria-hidden="true"></span>
+              </a></label>
+              <div class="m-l-25">
+                <div class="table-responsive">
+                  <table id="table-paginated" class="table table-bordered" cellspacing="0" width="100%">
+                    <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Tipo de Interacción</th>
+                      <th>Factor</th>
+                      <th>&nbsp;</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr *ngFor="let item of item_factores">
+                      <td>{{ item.id }}</td>
+                      <td>{{ item.tipo_interaccion_id | foreignitem:this._lista_tipo_interacciones }}</td>
+                      <td>{{ item.factor }}</td>
+                      <td class="text-center">
+                        <a (click)="onEditarFactor(item.id)" class="btn btn-default" aria-label="Left Align" title="Editar">
+                          <span class="glyphicon glyphicon-edit" aria-hidden="true"></span>
+                        </a>
+                        <a (click)="onEliminarFactor(modalEliminarFactor, item)" class="btn btn-default" aria-label="Left Align" title="Eliminar">
+                          <span class="glyphicon glyphicon-remove" aria-hidden="true"></span>
+                        </a>
+                      </td>
+                    </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="form-group m-t-30 m-b-0">
+            <div class="col-md-8">
+              <a [routerLink]="['/tramites', item.id, 'editar']" role="button" class="btn btn-success btn-lg"><i class="fa fa-floppy-o fa-fw"></i> Editar</a>
+              <button (click)="onEliminar(modalEliminar)" type="button" class="btn btn-danger btn-lg" [disabled]="item.id === 0"><i class="fa fa-trash fa-fw"></i> Eliminar</button>
+            </div>
+            <div class="col-md-4 a-right">
+              <a routerLink="/tramites" role="button" class="btn btn-primary btn-lg"><i class="fa fa-times fa-fw"></i> Cancelar</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<ng-template #modalEliminar>
+  <div class="modal-header">
+    <h4 class="modal-title pull-left">Eliminar Trámite</h4>
+    <button type="button" class="close pull-right" aria-label="Close" (click)="modalRef.hide()">
+      <span aria-hidden="true">&times;</span>
+    </button>
+  </div>
+  <div class="modal-body">
+    Usted está a punto de eliminar el trámite "{{item.nombre}}", ¿Está seguro que desea continuar?
+  </div>
+  <div class="modal-footer">
+    <button type="button" class="btn btn-default" (click)="modalRef.hide()">Cancelar</button>
+    <button type="button" class="btn btn-default" (click)="_onEliminar()">Eliminar</button>
+  </div>
+</ng-template>
+
+<ng-template #modalEliminarFactor>
+  <div class="modal-header">
+    <h4 class="modal-title pull-left">Eliminar Factor de Interacción</h4>
+    <button type="button" class="close pull-right" aria-label="Close" (click)="modalRef.hide()">
+      <span aria-hidden="true">&times;</span>
+    </button>
+  </div>
+  <div class="modal-body">
+    Usted está a punto de eliminar el factor de interacción, ¿Está seguro que desea continuar?
+  </div>
+  <div class="modal-footer">
+    <button type="button" class="btn btn-default" (click)="modalRef.hide()">Cancelar</button>
+    <button type="button" class="btn btn-default" (click)="_onEliminarFactor()">Eliminar</button>
+  </div>
+</ng-template>

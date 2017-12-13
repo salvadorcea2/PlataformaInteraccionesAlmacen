@@ -1,0 +1,256 @@
+<div id="wrapper">
+  <div class="row m-t-30">
+    <div class="col-md-6 col-md-offset-3">
+      <app-alertas></app-alertas>
+      <div class="panel panel-default margin-b-30">
+        <!-- Start .panel -->
+        <div class="panel-heading">
+          <h4 class="panel-title">
+            <ng-container *ngIf="!item.id">Agregar Nuevo </ng-container>
+            <ng-container *ngIf="item.id">Editar </ng-container>
+            Trámite</h4>
+        </div>
+        <div class="panel-body">
+          <form class="form-horizontal" (ngSubmit)="onSubmit(f)" #f="ngForm">
+            <div class="form-group p-t-15 p-r-15 p-l-15">
+              <div class="row m-b-10">
+                <div class="col-md-12">
+                  <label for="ministerio_id">Ministerio</label>
+                  <select class="form-control" id="ministerio_id" name="ministerio_id" #ministerio_id="ngModel" [(ngModel)]="_lista_ministerio" required>
+                    <option [value]="undefined" disabled>Ministerio</option>
+                    <!--<option [value]="">Todos</option>-->
+                    <option *ngFor="let item of _lista_ministerios" [value]="item.id">{{ item.nombre }}</option>
+                  </select>
+                  <p class="help-block" *ngIf="ministerio_id.touched && !ministerio_id.valid">Ministerio es requerido, por favor seleccione un ministerio válido</p>
+                </div>
+              </div>
+              <div class="row m-b-10">
+                <div class="col-md-12">
+                  <label for="subsecretaria_id">Subsecretaría</label>
+                  <select class="form-control" id="subsecretaria_id" name="subsecretaria_id" #subsecretaria_id="ngModel" [(ngModel)]="_lista_subsecretaria" required>
+                    <option [value]="undefined" disabled>Subsecretaría</option>
+                    <!--<option [value]="">Todas</option>-->
+                    <option *ngFor="let item of _lista_subsecretarias | fromlista:'ministerio_id':_lista_ministerio" [value]="item.id">{{ item.nombre }}</option>
+                  </select>
+                  <p class="help-block" *ngIf="subsecretaria_id.touched && !subsecretaria_id.valid">Subsecretaría es requerido, por favor seleccione una subsecretaría válida</p>
+                </div>
+              </div>
+              <div class="row m-b-10">
+                <div class="col-md-12">
+                  <label for="institucion_id">Instituto</label>
+                  <select class="form-control" id="institucion_id" name="institucion_id" #institucion_id="ngModel" [(ngModel)]="item.institucion_id" required>
+                    <option [value]="undefined">Institución</option>
+                    <!--<option [value]="">Todas</option>-->
+                    <option *ngFor="let item of _lista_instituciones | fromlista:'subsecretaria_id':_lista_subsecretaria" [value]="item.id">{{ item.nombre }}</option>
+                  </select>
+                  <p class="help-block" *ngIf="institucion_id.touched && !institucion_id.valid">Institución es requerido, por favor seleccione una institución válida</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-group m-t-15">
+              <div class="col-md-12">
+                <label for="nombre">Nombre</label>
+                <div class="input-group input-group-lg">
+                  <span class="input-group-addon" id="sizing-addon1"><i class="fa fa-bars fa-fw"></i></span>
+                  <input type="text" class="form-control" id="nombre" name="nombre" #nombre="ngModel" placeholder="Ingresa Nombre" [(ngModel)]="item.nombre" aria-describedby="sizing-addon1" pattern="[a-zA-ZñÑáéíóúÁÉÍÓÚ0-9 ]*" noSpaces>
+                </div>
+                <p class="help-block" *ngIf="nombre.touched && !nombre.valid">Nombre es requerido, por favor seleccione un nombre válido</p>
+              </div>
+            </div>
+            <div class="form-group m-t-15">
+              <div class="col-md-12">
+                <label for="codigo_pmg">Código PMG</label>
+                <div class="input-group input-group-lg">
+                  <span class="input-group-addon" id="sizing-addon1"><i class="fa fa-bars fa-fw"></i></span>
+                  <input type="text" class="form-control" id="codigo_pmg" name="codigo_pmg" #codigo_pmg="ngModel" placeholder="Ingresa Código PMG" [(ngModel)]="item.codigo_pmg" aria-describedby="sizing-addon1" pattern="[a-zA-ZñÑáéíóúÁÉÍÓÚ0-9 ]*" noSpaces>
+                </div>
+                <p class="help-block" *ngIf="codigo_pmg.touched && !codigo_pmg.valid">Código PMG es requerido, por favor ingrese un código válido</p>
+              </div>
+            </div>
+            <div class="form-group m-t-15">
+              <div class="col-md-12">
+                <label for="url">URL</label>
+                <div class="input-group input-group-lg">
+                  <span class="input-group-addon" id="sizing-addon1"><i class="fa fa-bars fa-fw"></i></span>
+                  <input type="text" class="form-control" id="url" name="url" #url="ngModel" placeholder="Ingresa URL" [(ngModel)]="item.url" aria-describedby="sizing-addon1" pattern="^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$">
+                </div>
+                <p class="help-block" *ngIf="url.touched && !url.valid">Por favor ingrese una URL válida</p>
+              </div>
+            </div>
+            <div class="form-group m-t-15">
+              <div class="col-md-12">
+                <label for="costo">Costo</label>
+                <div class="input-group input-group-lg">
+                  <span class="input-group-addon" id="sizing-addon1"><i class="fa fa-bars fa-fw"></i></span>
+                  <input type="text" class="form-control" id="costo" name="costo" #costo="ngModel" placeholder="Ingresa Costo" [(ngModel)]="item.costo" aria-describedby="sizing-addon1" pattern="[0-9 ]*">
+                </div>
+                <p class="help-block" *ngIf="costo.touched && !costo.valid">Por favor ingrese un Costo válido</p>
+              </div>
+            </div>
+            <div class="form-group m-t-15">
+              <div class="col-md-12">
+                <label for="codigo_simple">Código Simple</label>
+                <div class="input-group input-group-lg">
+                  <span class="input-group-addon" id="sizing-addon1"><i class="fa fa-bars fa-fw"></i></span>
+                  <input type="text" class="form-control" id="codigo_simple" name="codigo_simple" #codigo_simple="ngModel" placeholder="Ingresa Código Simple" [(ngModel)]="item.codigo_simple" aria-describedby="sizing-addon1" pattern="[a-zA-ZñÑáéíóúÁÉÍÓÚ0-9 ]*">
+                </div>
+                <p class="help-block" *ngIf="codigo_simple.touched && !codigo_simple.valid">Por favor ingrese un Código Simple válido</p>
+              </div>
+            </div>
+            <div class="form-group m-t-15">
+              <div class="col-md-12">
+                <label for="periodicidad_id">Periodicidad</label>
+                <select class="form-control" id="periodicidad_id" name="periodicidad_id" #periodicidad_id="ngModel" [(ngModel)]="item.periodicidad_id" required>
+                  <option [value]="undefined" disabled>Periodicidad</option>
+                  <!--<option [value]="">Todos</option>-->
+                  <option *ngFor="let item of _lista_periodicidades" [value]="item.id">{{ item.nombre }}</option>
+                </select>
+                <p class="help-block" *ngIf="periodicidad_id.touched && !periodicidad_id.valid">Periodicidad es inválida, por favor seleccione una periodicidad válida</p>
+              </div>
+            </div>
+            <div class="form-group m-t-15">
+              <div class="col-md-12">
+                <label for="categoria_id">Categoría</label>
+                <select class="form-control" id="categoria_id" name="categoria_id" #categoria_id="ngModel" [(ngModel)]="item.categoria_id" required>
+                  <option [value]="undefined" disabled>Categoría</option>
+                  <!--<option [value]="">Todos</option>-->
+                  <option *ngFor="let item of _lista_categorias" [value]="item.id">{{ item.nombre }}</option>
+                </select>
+                <p class="help-block" *ngIf="categoria_id.touched && !categoria_id.valid">Categoría es inválida, por favor seleccione una categoría válida</p>
+              </div>
+            </div>
+            <div class="form-group m-t-15">
+              <div class="col-md-12">
+                <label for="nivel_digitalizacion_id">Nivel Digitalización</label>
+                <select class="form-control" id="nivel_digitalizacion_id" name="nivel_digitalizacion_id" #nivel_digitalizacion_id="ngModel" [(ngModel)]="item.nivel_digitalizacion_id" required>
+                  <option [value]="undefined" disabled>Nivel Digitalización</option>
+                  <!--<option [value]="">Todos</option>-->
+                  <option *ngFor="let item of _lista_nivelesdigitalizacion" [value]="item.id">{{ item.nombre }}</option>
+                </select>
+                <p class="help-block" *ngIf="nivel_digitalizacion_id.touched && !nivel_digitalizacion_id.valid">Nivel de Digitalización es inválido, por favor selecciona un nivel válido</p>
+              </div>
+            </div>
+            <div class="form-group m-t-15">
+              <div class="col-md-12">
+                <div><label>Clave Única</label></div>
+                <div class="btn-group">
+                  <label class="btn btn-primary" name="clave_unica0" [(ngModel)]="item.clave_unica" [btnRadio]="false">No</label>
+                  <label class="btn btn-primary" name="clave_unica1" [(ngModel)]="item.clave_unica" [btnRadio]="true">Si</label>
+                </div>
+              </div>
+            </div>
+            <div class="form-group m-t-15">
+              <div class="col-md-12">
+                <div><label>Presencialidad</label></div>
+                <div class="btn-group">
+                  <label class="btn btn-primary" name="presencialidad0" [(ngModel)]="item.presencialidad" [btnRadio]="false">No</label>
+                  <label class="btn btn-primary" name="presencialidad1" [(ngModel)]="item.presencialidad" [btnRadio]="true">Si</label>
+                </div>
+              </div>
+            </div>
+            <div class="form-group m-b-30">
+              <div class="col-sm-12">
+                <div><label>Habilitado</label></div>
+                <div class="btn-group">
+                  <label class="btn btn-primary" name="habilitado0" [(ngModel)]="item.habilitado" [btnRadio]="false">No</label>
+                  <label class="btn btn-primary" name="habilitado1" [(ngModel)]="item.habilitado" [btnRadio]="true">Si</label>
+                </div>
+              </div>
+            </div>
+            <div class="form-group p-t-15 p-r-15 p-l-15">
+              <div class="col-md-12">
+                <div class="input-group input-group-lg width-100">
+                  <div><label for="descripcion">Descripción</label></div>
+                  <textarea class="from-control width-100" name="descripcion" id="descripcion" [(ngModel)]="item.descripcion"></textarea>
+                </div>
+              </div>
+            </div>
+            <div class="form-group p-t-15 p-r-15 p-l-15">
+              <div class="col-md-12">
+                <div class="input-group input-group-lg width-100">
+                  <div><label for="fuente">Fuente</label></div>
+                  <textarea class="from-control width-100" name="fuente" id="fuente" [(ngModel)]="item.fuente"></textarea>
+                </div>
+              </div>
+            </div>
+            <div class="form-group p-t-15 p-r-15 p-l-15">
+              <div class="col-md-12">
+                <div class="input-group input-group-lg width-100">
+                  <div><label for="barreras_normativas">Barreras Normativas</label></div>
+                  <textarea class="from-control width-100" name="barreras_normativas" id="barreras_normativas" [(ngModel)]="item.barreras_normativas"></textarea>
+                </div>
+              </div>
+            </div>
+            <div class="form-group p-t-15 p-r-15 p-l-15">
+              <div class="col-md-12">
+                <div class="input-group input-group-lg width-100">
+                  <div><label for="comentarios">Comentarios</label></div>
+                  <textarea class="from-control width-100" name="comentarios" id="comentarios" [(ngModel)]="item.comentarios"></textarea>
+                </div>
+              </div>
+            </div>
+            <div class="form-group p-t-15 p-r-15 p-l-15">
+              <label><i class="fa fa-bars fa-fw"></i> Tabla Factores de Interacciones <a (click)="onAgregarFactor()" class="btn btn-default" aria-label="Left Align" title="Agregar Factor">
+                <span class="glyphicon glyphicon-plus-sign" aria-hidden="true"></span>
+              </a></label>
+              <div class="m-l-25">
+                <div class="table-responsive">
+                  <table id="table-paginated" class="table table-bordered" cellspacing="0" width="100%">
+                    <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Tipo de Interacción</th>
+                      <th>Factor</th>
+                      <th>&nbsp;</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr *ngFor="let item of item_factores">
+                      <td>{{ item.id }}</td>
+                      <td>{{ item.tipo_interaccion_id | foreignitem:this._lista_tipo_interacciones }}</td>
+                      <td>{{ item.factor }}</td>
+                      <td class="text-center">
+                        <a (click)="onEditarFactor(item.id)" class="btn btn-default" aria-label="Left Align" title="Editar">
+                          <span class="glyphicon glyphicon-edit" aria-hidden="true"></span>
+                        </a>
+                        <a (click)="onEliminarFactor(modalEliminarFactor, item)" class="btn btn-default" aria-label="Left Align" title="Eliminar">
+                          <span class="glyphicon glyphicon-remove" aria-hidden="true"></span>
+                        </a>
+                      </td>
+                    </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+            <div class="form-group m-t-30 m-b-0">
+              <div class="col-md-6">
+                <button type="submit" class="btn btn-success btn-lg" [disabled]="!f.valid"><i class="fa fa-floppy-o fa-fw"></i> Guardar</button>
+              </div>
+              <div class="col-md-6 a-right">
+                <a routerLink="/tramites" role="button" class="btn btn-danger btn-lg"><i class="fa fa-times fa-fw"></i> Cancelar</a>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<ng-template #modalEliminarFactor>
+  <div class="modal-header">
+    <h4 class="modal-title pull-left">Eliminar Factor de Interacción</h4>
+    <button type="button" class="close pull-right" aria-label="Close" (click)="modalRef.hide()">
+      <span aria-hidden="true">&times;</span>
+    </button>
+  </div>
+  <div class="modal-body">
+    Usted está a punto de eliminar el factor de interacción, ¿Está seguro que desea continuar?
+  </div>
+  <div class="modal-footer">
+    <button type="button" class="btn btn-default" (click)="modalRef.hide()">Cancelar</button>
+    <button type="button" class="btn btn-default" (click)="_onEliminarFactor()">Eliminar</button>
+  </div>
+</ng-template>

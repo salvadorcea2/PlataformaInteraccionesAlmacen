@@ -1,0 +1,41 @@
+<div id="wrapper">
+  <div class="row m-t-30">
+    <div class="col-md-6 col-md-offset-3">
+      <div class="panel panel-default margin-b-30">
+        <!-- Start .panel -->
+        <div class="panel-heading">
+          <h4 class="panel-title">
+            <ng-container *ngIf="!_item.id">Agregar Nuevo Factor de Interacciones </ng-container>
+            <ng-container *ngIf="_item.id">Editar Factor de Interacciones</ng-container>
+            Trámite ({{_parent.nombre}})</h4>
+        </div>
+        <div class="panel-body">
+          <form class="form-horizontal" (ngSubmit)="onSubmit(f)" #f="ngForm">
+            <div class="form-group p-t-15 p-r-15 p-l-15">
+              <div class="row m-b-10">
+                <div class="col-md-12">
+                  <select class="form-control" name="tipo_interaccion_id" [(ngModel)]="_item.tipo_interaccion_id" required>
+                    <option value="">Selecciona Tipo de Interacción</option>
+                    <option *ngFor="let row of _lista_tipo_interacciones" [value]="row.id">{{ row.nombre }}</option>
+                  </select>
+                </div>
+              </div>
+              <div class="row m-b-10">
+                <div class="col-md-12">
+                  <input type="text" class="form-control" name="factor" [(ngModel)]="_item.factor" required>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-group m-t-30 m-b-0">
+              <div class="col-md-12 align-right">
+                <button type="submit" class="btn btn-success btn-lg" [disabled]="!f.valid"><i class="fa fa-floppy-o fa-fw"></i> Guardar</button>
+                <a [routerLink]="['/tramites', _component_entidad_id, 'ver']" role="button" class="btn btn-danger btn-lg"><i class="fa fa-times fa-fw"></i> Cancelar</a>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
