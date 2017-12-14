@@ -1,4 +1,6 @@
 import sbtassembly.AssemblyKeys
+import scala.language.postfixOps
+
 
 name := "repositorio"
 
@@ -129,6 +131,11 @@ lazy val receptor = project.in(file("receptor"))
   .enablePlugins(sbtdocker.DockerPlugin, JavaServerAppPackaging)
   .settings(dockerSettings)
 
+
+
+val buildFrontend = taskKey[Unit]("Execute frontend scripts")
+
+
 lazy val repositorioweb = project.in(file("repositorioweb"))
   .aggregate(comun)
   .dependsOn(comun)
@@ -136,6 +143,20 @@ lazy val repositorioweb = project.in(file("repositorioweb"))
   .settings(libraryDependencies ++= dependenciasComunes)
   .settings(libraryDependencies ++= dependenciasRepoWeb)
   .enablePlugins(PlayScala)
+  .settings(
+    buildFrontend := {
+    val s: TaskStreams = streams.value
+    val npmBuild = s"npm run --prefix ${baseDirectory.value.name}/ui build"
+    val npmInstall = s"npm install --prefix ${baseDirectory.value.name}/ui"
+    s.log.info("building frontend...")
+    if ((npmInstall #&& npmBuild!) == 0) {
+      s.log.success("frontend build successful!")
+    } else {
+      throw new IllegalStateException("frontend build failed!")
+    }
+  },
+    compile in Compile <<= compile in Compile dependsOn buildFrontend)
+
 
 
 lazy val repositorio = project.in( file(".") )
