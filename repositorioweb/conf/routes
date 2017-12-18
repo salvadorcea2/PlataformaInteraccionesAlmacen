@@ -49,6 +49,11 @@ POST    /api/ministerio                controllers.MinisterioController.post()
 PUT     /api/ministerio                controllers.MinisterioController.put()
 DELETE  /api/ministerio/$id<[0-9]+>    controllers.MinisterioController.delete(id: Int)
 
+GET     /api/servicio                controllers.ServicioController.get(inicio : Int ?=0, cuantos : Int ?=10, orden : String ?="id", tipoOrden: String ?="desc", habilitado: Option[Boolean], id : Option[Int], nombre : Option[String], ministerio_id : Option[Int],subsecretaria_id : Option[Int],institucion_id : Option[Int])
+POST    /api/servicio                controllers.ServicioController.post()
+PUT     /api/servicio                controllers.ServicioController.put()
+DELETE  /api/servicio/$id<[0-9]+>    controllers.ServicioController.delete(id: Int)
+
 GET     /api/mantenedor                controllers.MantenedorController.mantenedores(orden : String ?="singular", tipoOrden: String ?="asc")
 GET     /api/mantenedor/:tabla         controllers.MantenedorController.get(tabla : String, inicio : Int ?=0, cuantos : Int ?=10, orden : String ?="id", tipoOrden: String ?="desc", habilitado: Option[Boolean], id : Option[Int], nombre : Option[String])
 POST    /api/mantenedor/:tabla        controllers.MantenedorController.post(tabla : String)

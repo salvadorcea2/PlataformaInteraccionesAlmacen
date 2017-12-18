@@ -39,6 +39,7 @@ import scala.io.Source
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 import spray.json._
+import DefaultJsonProtocol._
 import cl.exe.main.ReceptorMain.{materializer, system}
 
 /*
@@ -72,16 +73,19 @@ object RecepcionUtil {
 class DwhActor extends Actor with ActorLogging {
   def receive = {
     case (recepcion: Recepcion, rec: ActorRef) =>
-      log.info("DWH Generado")
-      /*
-      log.info(recepcion.propiedades("generadores"));
+      log.info("Generando DWH")
 
-      val generadores = recepcion.propiedades("generadores").split(";")
+      log.info(recepcion.propiedades.get("generadores").getOrElse("Sin generadores"))
+
+      val generadores = recepcion.propiedades.get("generadores").foreach{g =>
+        val generadores = g.split(";")
       for (generador <- generadores) {
         log.info(s"Invocando generado $generador")
         var future: Future[QueryResult] = pool.sendQuery(s"select * from ${generador.trim}(${recepcion.id})")
         Await.result(future, 30 seconds)
-      }*/
+      }
+      }
+      log.info("DWH Generado")
       rec ! recepcion.copy(estado = "finalizada")
       context.parent ! PoisonPill
 
@@ -122,6 +126,79 @@ class EjecutorActor extends Actor with ActorLogging {
 
 abstract class EjecutorBaseActor extends Actor with ActorLogging {
   val dwh = context.actorOf(Props[DwhActor], name = "dwh")
+  val sdf = new SimpleDateFormat("yyyyMMdd")
+
+  def obtenerTramites() = Await.result(Cache.obtenerTipoTramites(), 30 seconds).getOrElse(Map[String, TipoTramite]().empty)
+
+  def obtenerFactores() = {
+    val f = new scala.collection.mutable.HashMap[String, scala.collection.mutable.HashMap[Int, Double]].empty
+
+    Await.result(ejecutarSQL("factores.select.sql", Array[Int]()).map(qr => {
+      qr.rows.get.foreach(r=> {
+
+        if (!f.contains(r("codigo_pmg").asInstanceOf[String])){
+          f += (r("codigo_pmg").asInstanceOf[String]-> new mutable.HashMap[Int,Double]())
+        }
+        val m = f(r("codigo_pmg").asInstanceOf[String])
+        m += (r("tipo_interaccion_id").asInstanceOf[Int] -> r("factor").asInstanceOf[Double])
+
+
+      })
+    }), 30 seconds)
+    f.map(kv => (kv._1->kv._2.toMap)).toMap
+  }
+
+  def insertarFactores(recepcion: Recepcion) = Await.result(pool.sendQuery(s"""WITH r as (Select id from recepcion where id = ${recepcion.id})
+        insert into recepcion_factor(recepcion_id, tipo_tramite_id, tipo_interaccion_id, factor)
+        select (select id from r), tipo_tramite_id, tipo_interaccion_id, factor from tipo_tramite_factor """), 30 seconds)
+
+  def insertar(recepcion: Recepcion, tipoTramite: TipoTramite, periodicidad : Int, factor : Option[Map[Int, Double]],fechaMensual: DateTime, fechaAnual:DateTime, canal: Int, cantidad : Int, fechaDiaria : Option[DateTime] = None) : Int = {
+
+
+    var inserciones = 0
+    val mes = sdf.format(fechaMensual.toDate).toInt
+    val anual = sdf.format(fechaAnual.toDate).toInt
+
+    val factores = if (factor.isEmpty)
+      Map(0->1.0)
+    else
+      factor.get
+
+
+    val funcionTramite = periodicidad match {
+      case 2 /* DIARIA */ =>
+        val dia = sdf.format(fechaDiaria.get.toDate).toInt
+        s"select * from dwh.insertar_tramite_diaria($dia,$canal,${tipoTramite.id},$cantidad, $mes,$anual)"
+      case 4 /* MENSUAL */ => s"select * from dwh.insertar_tramite_mensual($mes,$canal,${tipoTramite.id},$cantidad, $anual)"
+      case 5 /* ANUAL */ => s"select * from dwh.insertar_tramite_anual($anual,$canal,${tipoTramite.id},$cantidad)"
+
+    }
+
+
+    var futureTramite : Future[QueryResult] = pool.sendQuery(funcionTramite)
+    Await.result(futureTramite.map(qr=>qr), 30 seconds)
+    inserciones = inserciones+1
+
+    factores.foreach{
+      case (tipoInteraccion, valorFactor) =>
+        val funcionInteraccion = periodicidad  match {
+          case 2 /* DIARIA */ =>
+            val dia = sdf.format(fechaDiaria.get.toDate).toInt
+            s"select * from dwh.insertar_interaccion_diaria($dia,$tipoInteraccion,$canal,${tipoTramite.id}, ${(cantidad*valorFactor).toInt}, $mes, $anual)"
+          case 4 /* MENSUAL */ => s"select * from dwh.insertar_interaccion_mensual($mes,$tipoInteraccion,$canal,${tipoTramite.id}, ${(cantidad*valorFactor).toInt}, $anual)"
+          case 5 /* ANUAL */ => s"select * from dwh.insertar_interaccion_anual($anual,$tipoInteraccion,$canal,${tipoTramite.id}, ${(cantidad*valorFactor).toInt})"
+
+        }
+        var futureInteraccion : Future[QueryResult] = pool.sendQuery(funcionInteraccion)
+        Await.result(futureInteraccion.map(qr=>qr), 30 seconds)
+        inserciones = inserciones+1
+
+    }
+    inserciones
+
+  }
+
+
 
   def procesamientoCompleto(receptor: ActorRef, errores: Int, recepcion: Recepcion) = {
     var estado = "procesada"
@@ -202,7 +279,7 @@ class EjecutorLogActor extends EjecutorBaseActor {
 class EjecutorExcelActor extends EjecutorBaseActor {
 
 
-  val sdf = new SimpleDateFormat("yyyyMMdd")
+
   val sdfExcel = new SimpleDateFormat("dd-MM-yyyy")
 
 
@@ -210,45 +287,7 @@ class EjecutorExcelActor extends EjecutorBaseActor {
 
 
 
-  def insertar(recepcion: Recepcion, tipoTramite: TipoTramite, periodicidad : Int, factor : Option[Map[Int, Double]], fechaMensual: DateTime, fechaAnual:DateTime, canal: Int, cantidad : Int) : Int = {
 
-
-    var inserciones = 0
-    val mes = sdf.format(fechaMensual.toDate).toInt
-    val anual = sdf.format(fechaAnual.toDate).toInt
-
-    val factores = if (factor.isEmpty)
-      Map(0->1.0)
-    else
-        factor.get
-
-
-    val funcionTramite = periodicidad match {
-      case 4 /* MENSUAL */ => s"select * from dwh.insertar_tramite_mensual($mes,$canal,${tipoTramite.id},$cantidad, $anual)"
-      case 5 /* ANUAL */ => s"select * from dwh.insertar_tramite_anual($anual,$canal,${tipoTramite.id},$cantidad)"
-
-    }
-
-
-    var futureTramite : Future[QueryResult] = pool.sendQuery(funcionTramite)
-    Await.result(futureTramite.map(qr=>qr), 30 seconds)
-    inserciones = inserciones+1
-
-    factores.foreach{
-      case (tipoInteraccion, valorFactor) =>
-        val funcionInteraccion = periodicidad  match {
-          case 4 /* MENSUAL */ => s"select * from dwh.insertar_interaccion_mensual($mes,$tipoInteraccion,$canal,${tipoTramite.id}, ${(cantidad*valorFactor).toInt}, $anual)"
-          case 5 /* ANUAL */ => s"select * from dwh.insertar_interaccion_anual($anual,$tipoInteraccion,$canal,${tipoTramite.id}, ${(cantidad*valorFactor).toInt})"
-
-        }
-        var futureInteraccion : Future[QueryResult] = pool.sendQuery(funcionInteraccion)
-        Await.result(futureInteraccion.map(qr=>qr), 30 seconds)
-        inserciones = inserciones+1
-
-    }
-    inserciones
-
-  }
 
 
   def receive = {
@@ -267,33 +306,10 @@ class EjecutorExcelActor extends EjecutorBaseActor {
        var lineas = 0
       var inserciones = 0
       var errores = 0
-      val f = new scala.collection.mutable.HashMap[String, scala.collection.mutable.HashMap[Int, Double]].empty
-      val f1 = Cache.obtenerTipoTramites()
-      val tipoTramites = Await.result(f1, 30 seconds).getOrElse( Map[String, TipoTramite]().empty)
+      val tipoTramites = obtenerTramites()
+      val factores = obtenerFactores()
+      insertarFactores(recepcion)
 
-
-
-      val f2 = ejecutarSQL("factores.select.sql", Array[Int]()).map(qr => {
-        qr.rows.get.foreach(r=> {
-
-          if (!f.contains(r("codigo_pmg").asInstanceOf[String])){
-            f += (r("codigo_pmg").asInstanceOf[String]-> new mutable.HashMap[Int,Double]())
-          }
-          val m = f(r("codigo_pmg").asInstanceOf[String])
-          m += (r("tipo_interaccion_id").asInstanceOf[Int] -> r("factor").asInstanceOf[Double])
-
-
-        })
-      })
-
-
-      Await.result(f2, 30 seconds)
-      val factores = f.map(kv => (kv._1->kv._2.toMap)).toMap
-
-      val f3 = pool.sendQuery(s"""WITH r as (Select id from recepcion where id = ${recepcion.id})
-        insert into recepcion_factor(recepcion_id, tipo_tramite_id, tipo_interaccion_id, factor)
-        select (select id from r), tipo_tramite_id, tipo_interaccion_id, factor from tipo_tramite_factor """)
-      Await.result(f3, 30 seconds)
 
       while (iterator.hasNext()) {
 
@@ -429,8 +445,68 @@ class EjecutorMdsActor extends EjecutorBaseActor {
 
   def receive = {
     case recepcion: Recepcion =>
+      val rec = sender()
       log.info(recepcion.archivo)
+      val tipoTramites = obtenerTramites()
+      val factores = obtenerFactores()
+      insertarFactores(recepcion)
+      val file = new File(recepcion.archivo)
+      val usuario = RecepcionUtil.obtenerUsuario(file)
+      val mascaraUsuario = RecepcionUtil.obtenerMascaraUsuario(usuario)
+      val codigoPMG = config.getString("receptor.PMGTramiteMDS")
+      val tipoTramite = tipoTramites.get(codigoPMG)
+      val factor = factores.get(codigoPMG)
+      val s = new SimpleDateFormat("yyyyMMdd")
+      var elementos = 0
+      var inserciones = 0
+      var errores = 0
+      val fecha = new DateTime(sdf.parse(file.getName.split("\\.")(0)))
+      log.info("Procesando fecha "+fecha.toString)
+      val canales : Map[Int, mutable.Map[String, Int]] = Map(1-> new mutable.HashMap[String,Int](), 2 -> new mutable.HashMap[String,Int]())
 
+
+      try {
+      val jsonVal = Source.fromFile(recepcion.archivo).mkString.parseJson
+      val contenido = jsonVal.asJsObject.fields("contenido").asInstanceOf[JsArray]
+      for(elemento <- contenido.elements){
+        try {
+          elementos = elementos + 1
+          val canal_mds = elemento.asJsObject.fields("id_canal").convertTo[String].toInt
+          val cuantos = elemento.asJsObject.fields("total").convertTo[String].toInt
+          val id_tramite = elemento.asJsObject.fields("total").convertTo[String]
+          val canal = canal_mds match {
+            case 1 => //Clave Única
+              2  //WEB
+            case 2 => //Clave Única
+              2 //WEB
+            case _ =>
+              1
+
+          }
+          if (canales.get(canal).get.getOrElse(id_tramite,0) < cuantos)
+            canales.get(canal).get .put(id_tramite,cuantos)
+        }
+        catch {
+          case e: Exception =>
+            errores = errores + 1
+            bitacora(recepcion.id, "ERROR", s"Error en el contenido $elementos del JSON: ${e.getMessage}", "procesamiento")
+        }
+
+      }
+
+      insertar(recepcion, tipoTramite.get, 2 /*PERIODICIDAD DIARIA*/ , factor, fecha.withDayOfMonth(1), fecha.withMonthOfYear(1).withDayOfMonth(1), 2 , canales.get(2).get.values.sum, Some(fecha))
+      insertar(recepcion, tipoTramite.get, 2 /*PERIODICIDAD_DIARIA*/ , factor, fecha.withDayOfMonth(1), fecha.withMonthOfYear(1).withDayOfMonth(1), 1 ,  canales.get(1).get.values.sum, Some(fecha))
+
+      inserciones = 2
+      }
+      catch {
+        case e: Exception =>
+          errores = errores + 1
+          bitacora(recepcion.id, "ERROR", s"Error en el JSON: ${e.getMessage}", "procesamiento")
+      }
+      log.info("Elementos procesados {} inserciones {}", elementos, inserciones)
+      bitacora(recepcion.id, "INFO", s"Elementos procesados $elementos inserciones ${inserciones}", "procesada")
+      procesamientoCompleto(rec, errores, recepcion)
   }
 }
 
@@ -540,15 +616,24 @@ class ReceptorArchivoActor(receptor: Receptor) extends ReceptorActor(receptor) {
 
 class ReceptorMdsActor(receptor: Receptor) extends ReceptorActor(receptor) {
 
-  object MDSGet
+
+  case class MDSGet(fecha : Option[DateTime])
+  val sdt = new SimpleDateFormat("yyyyMMdd")
 
   override def preStart = {
     super.preStart()
 
+    if (config.getBoolean("receptor.recuperarTramiteMDS")) {
+      val fechaInicio = new DateTime(sdt.parse(config.getString("receptor.inicioTramiteMDS")))
+      system.scheduler.scheduleOnce(
+        5000 milliseconds) {
+        self ! MDSGet(Some(fechaInicio))
+    }
+    }
 
      receptor.propiedades.get("cron").foreach(cron => {
       context.actorSelection("/user/crontab").resolveOne( 5 seconds).map(crontab => {
-        crontab ! CronTab.Schedule(self, MDSGet, CronExpression(cron))
+        crontab ! CronTab.Schedule(self, MDSGet(None), CronExpression(cron))
 
       })
      })
@@ -556,7 +641,20 @@ class ReceptorMdsActor(receptor: Receptor) extends ReceptorActor(receptor) {
   }
 
   override def receive = {
-    case MDSGet =>
+    case m:MDSGet =>
+      val date = m.fecha.getOrElse(new DateTime().minusDays(1))
+      val dia = sdt.format(date.toDate)
+      log.info("Recuperando información MDS del día "+dia)
+      m.fecha.foreach(f => {
+        if (new org.joda.time.Duration(f,new DateTime().minusDays(1)).getStandardDays() > 1){
+          system.scheduler.scheduleOnce(
+            5000 milliseconds) {
+            self ! MDSGet(Some(f.plusDays(1)))
+          }
+
+        }
+      })
+
       val archivo = ""
       receptor.propiedades.get("urlAutenticacion").foreach(urlAutenticacion  => {
         val s = "{\"grant_type\":\"client_credentials\",\"client_id\":\"81\",\"client_secret\":\"YWvrCPJD\"}"
@@ -571,10 +669,7 @@ class ReceptorMdsActor(receptor: Receptor) extends ReceptorActor(receptor) {
                  val jsonRes =  body.utf8String.parseJson.asInstanceOf[JsObject]
                  val token = jsonRes.fields("access_token").toString
                 receptor.propiedades.get("url").foreach(url  => {
-                  val date = new DateTime
-                  date.plus(Period.days(-1))
-                  val sdt = new SimpleDateFormat("yyyyMMdd")
-                  val dia = sdt.format(date.toDate)
+
                   val e = HttpEntity(contentType = ContentTypes.`application/json`, string = s)
                   val a = Authorization(OAuth2BearerToken(token))
 
