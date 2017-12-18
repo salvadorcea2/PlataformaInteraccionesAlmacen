@@ -56,6 +56,9 @@ import { TramitehistoricoComponent } from './tramites/tramitehistorico/tramitehi
 import { PlantillasComponent } from './plantillas/plantillas.component';
 import { PlantillaeditarComponent } from './plantillas/plantillaeditar/plantillaeditar.component';
 import { PlantillaverComponent } from './plantillas/plantillaver/plantillaver.component';
+import { ServiciosComponent } from './servicios/servicios.component';
+import { ServicioverComponent } from './servicios/serviciover/serviciover.component';
+import { ServicioeditarComponent } from './servicios/servicioeditar/servicioeditar.component';
 import { DialogoComponent } from './html/dialogo/dialogo.component';
 import { FiltroPipe } from './pipes/filtro.pipe';
 import { PaginadorComponent } from './html/paginador/paginador.component';
@@ -103,6 +106,10 @@ const appRoutes: Routes = [
   { path: 'plantillas/nuevo', component: PlantillaeditarComponent, canActivate: [AuthGuard] },
   { path: 'plantillas/:id/editar', component: PlantillaeditarComponent, canActivate: [AuthGuard] },
   { path: 'plantillas/:id/ver', component: PlantillaverComponent, canActivate: [AuthGuard] },
+  { path: 'servicios', component: ServiciosComponent, canActivate: [AuthGuard] },
+  { path: 'servicios/nuevo', component: ServicioeditarComponent, canActivate: [AuthGuard] },
+  { path: 'servicios/:id/editar', component: ServicioeditarComponent, canActivate: [AuthGuard] },
+  { path: 'servicios/:id/ver', component: ServicioverComponent, canActivate: [AuthGuard] },
   { path: 'mantenedores', component: MantenedoresComponent, canActivate: [AuthGuard] },
   { path: 'mantenedores/nuevo', component: MantenedoreditarComponent, canActivate: [AuthGuard] },
   { path: 'mantenedores/:tabla/:id/editar', component: MantenedoreditarComponent, canActivate: [AuthGuard] },
@@ -157,7 +164,10 @@ const appRoutes: Routes = [
     AlertasComponent,
     FromlistaPipe,
     NoWhitespaceDirective,
-    FechaPipe
+    FechaPipe,
+    ServiciosComponent,
+    ServicioverComponent,
+    ServicioeditarComponent
   ],
   entryComponents : [
     DialogoComponent

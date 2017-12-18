@@ -19,6 +19,9 @@
           <a routerLink="/instituciones"><i class="fa fa-university"></i> <span class="nav-label">Instituciones</span></a>
         </li>
         <li routerLinkActive="active" *ngIf="authService.isAdmin()">
+          <a routerLink="/servicios"><i class="fa fa-cogs"></i> <span class="nav-label">Servicios</span></a>
+        </li>
+        <li routerLinkActive="active" *ngIf="authService.isAdmin()">
           <a routerLink="/tramites"><i class="fa fa-file-text"></i> <span class="nav-label">Trámites</span></a>
         </li>
         <li routerLinkActive="active" *ngIf="authService.isAdmin()">

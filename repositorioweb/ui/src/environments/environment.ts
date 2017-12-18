@@ -6,8 +6,10 @@
 export const environment = {
   production: false,
   api: {
-    host: 'https://54.187.41.133:8080/',
+    host: 'http://localhost:9000/',
+    //host: 'https://54.187.41.133:8080/',
     prefix: 'api/',
+    // login: 'http://localhost:9000/api/usuario/sesion',
     // login: 'https://54.187.41.133:8080/api/usuario/sesion',
     login: 'http://localhost/segpres/json.php?servicio=login',
     // logout: 'http://localhost/segpres/json.php?servicio=logout'
