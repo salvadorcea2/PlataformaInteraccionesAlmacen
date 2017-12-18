@@ -31,16 +31,16 @@ class ServicioController @Inject()(cc: ControllerComponents)(implicit config: Co
 
       if (institucion_id.isEmpty && subsecretaria_id.isEmpty)
         ministerio_id.foreach(m => {
-          sql = s"$sql $clausula id in (select tt.id from tipo_tramite tt, institucion i, subsecretaria s, ministerio m  where m.id = $m and s.ministerio_id=m.id and i.subsecretaria_id = s.id and tt.institucion_id = i.id)"
-          sqlCuantos = s"$sqlCuantos $clausula id in (select tt.id from tipo_tramite tt, institucion i, subsecretaria s, ministerio m  where m.id = $m and s.ministerio_id=m.id and i.subsecretaria_id = s.id and tt.institucion_id = i.id)"
+          sql = s"$sql $clausula id in (select ss.id from servicio ss, institucion i, subsecretaria s, ministerio m  where m.id = $m and s.ministerio_id=m.id and i.subsecretaria_id = s.id and ss.institucion_id = i.id)"
+          sqlCuantos = s"$sqlCuantos $clausula id in (select ss.id from servicio ss, institucion i, subsecretaria s, ministerio m  where m.id = $m and s.ministerio_id=m.id and i.subsecretaria_id = s.id and ss.institucion_id = i.id)"
           clausula = "and"
 
         })
 
       if (institucion_id.isEmpty )
         subsecretaria_id.foreach(s => {
-          sql = s"$sql $clausula id in (select tt.id from tipo_tramite tt, institucion i, subsecretaria s   where s.id = $s and i.subsecretaria_id = s.id and tt.institucion_id = i.id)"
-          sqlCuantos = s"$sqlCuantos $clausula id in (select tt.id from tipo_tramite tt, institucion i, subsecretaria s   where s.id = $s and i.subsecretaria_id = s.id and tt.institucion_id = i.id)"
+          sql = s"$sql $clausula id in (select ss.id from servicio ss, institucion i, subsecretaria s   where s.id = $s and i.subsecretaria_id = s.id and ss.institucion_id = i.id)"
+          sqlCuantos = s"$sqlCuantos $clausula id in (select ss.id from servicio ss, institucion i, subsecretaria s   where s.id = $s and i.subsecretaria_id = s.id and ss.institucion_id = i.id)"
           clausula = "and"
         })
 
