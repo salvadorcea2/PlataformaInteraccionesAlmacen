@@ -12,7 +12,7 @@ import cl.exe.config.Configuracion.config
 import cl.exe.dao.{Cache, ReceptorDAO}
 import cl.exe.mensaje.Mensaje
 import com.typesafe.scalalogging.LazyLogging
-import cl.exe.actores.{AdministradorActor, EjecutorActor, ReceptorActor}
+import cl.exe.actores.{AdministradorActor, CorreoActor, EjecutorActor, ReceptorActor}
 
 import scala.concurrent.ExecutionContext
 import scala.util.Random
@@ -36,6 +36,7 @@ object ReceptorMain extends App with LazyLogging {
     name = "administrador")
     system.actorOf(CronTab.props,"crontab")
     system.actorOf(Props[EjecutorActor], name="ejecutor")
+    system.actorOf(Props[CorreoActor], name="correo")
     inicializarReceptores
   }
 

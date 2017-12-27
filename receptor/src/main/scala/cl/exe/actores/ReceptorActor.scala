@@ -4,6 +4,7 @@ import java.io.{File, FileInputStream, PrintWriter}
 import java.nio.file.Paths
 import java.sql.{Date, Timestamp}
 import java.text.SimpleDateFormat
+import java.util.Base64
 
 import akka.actor._
 import akka.cluster.{Cluster, Member, MemberStatus}
@@ -87,6 +88,7 @@ class DwhActor extends Actor with ActorLogging {
       }
       log.info("DWH Generado")
       rec ! recepcion.copy(estado = "finalizada")
+      context.actorSelection("/user/correo").resolveOne(15 seconds).foreach(_ ! recepcion)
       context.parent ! PoisonPill
 
   }
@@ -278,16 +280,7 @@ class EjecutorLogActor extends EjecutorBaseActor {
 
 class EjecutorExcelActor extends EjecutorBaseActor {
 
-
-
   val sdfExcel = new SimpleDateFormat("dd-MM-yyyy")
-
-
-
-
-
-
-
 
 
   def receive = {
@@ -302,17 +295,23 @@ class EjecutorExcelActor extends EjecutorBaseActor {
       val datatypeSheet = workbook.getSheetAt(0)
       log.info("Recepcion {} {}", recepcion.id, recepcion.archivo)
       val iterator = datatypeSheet.iterator()
-      iterator.next //Saltar titulos
-       var lineas = 0
+      var lineas = 0
       var inserciones = 0
       var errores = 0
       val tipoTramites = obtenerTramites()
       val factores = obtenerFactores()
       insertarFactores(recepcion)
+      try {
+        val headers = iterator.next
+        val headerIterator = headers.cellIterator()
+        var h = ""
+        while (headerIterator.hasNext){
+           h=h+headerIterator.next().getStringCellValue+","
+        }
+        if (h != "id_tramite_pmg,nombre_tramite_pmg,inicio,fin,total,presencial,web,callcenter,kiosko,mobile,")
+          throw new Exception(h)
 
-
-      while (iterator.hasNext()) {
-
+        while (iterator.hasNext()) {
 
 
           try {
@@ -335,54 +334,75 @@ class EjecutorExcelActor extends EjecutorBaseActor {
               case e: Exception =>
                 0
             }
-            val presencial = try {cell = cellIterator.next()
+            val presencial = try {
+              cell = cellIterator.next()
 
-                if (cell.getCellTypeEnum == CellType.STRING) cell.getStringCellValue.trim.toInt else cell.getNumericCellValue().toInt
-              }
-              catch {
-                case e: Exception =>
-                  0
-              }
-             val canalWeb = try {cell = cellIterator.next()
-                if (cell.getCellTypeEnum == CellType.STRING) cell.getStringCellValue.trim.toInt else cell.getNumericCellValue().toInt
-              }
-              catch {
-                case e : Exception =>
-                  0
-              }
-            val callCenter = try {cell = cellIterator.next()
-                if (cell.getCellTypeEnum == CellType.STRING) cell.getStringCellValue.trim.toInt else cell.getNumericCellValue().toInt
-              }
-              catch {
-                case e: Exception =>
-                  0
-              }
+              if (cell.getCellTypeEnum == CellType.STRING) cell.getStringCellValue.trim.toInt else cell.getNumericCellValue().toInt
+            }
+            catch {
+              case e: Exception =>
+                0
+            }
+            val canalWeb = try {
+              cell = cellIterator.next()
+              if (cell.getCellTypeEnum == CellType.STRING) cell.getStringCellValue.trim.toInt else cell.getNumericCellValue().toInt
+            }
+            catch {
+              case e: Exception =>
+                0
+            }
+            val callCenter = try {
+              cell = cellIterator.next()
+              if (cell.getCellTypeEnum == CellType.STRING) cell.getStringCellValue.trim.toInt else cell.getNumericCellValue().toInt
+            }
+            catch {
+              case e: Exception =>
+                0
+            }
 
-              val canales = Array(1, 2, 7)
-              val totales = Array(presencial, canalWeb, callCenter)
-              val tipoTramite = tipoTramites.get(codigoPMG)
-              val factor = factores.get(codigoPMG)
+            val kioskos = try {
+              cell = cellIterator.next()
+              if (cell.getCellTypeEnum == CellType.STRING) cell.getStringCellValue.trim.toInt else cell.getNumericCellValue().toInt
+            }
+            catch {
+              case e: Exception =>
+                0
+            }
 
-              if (tipoTramite.isEmpty) {
-                bitacora(recepcion.id, "ERROR", s"Tipo de trámite $codigoPMG no existe en la fila ${currentRow.getRowNum +1 }", "procesamiento")
-                errores = errores + 1
+            val mobile = try {
+              cell = cellIterator.next()
+              if (cell.getCellTypeEnum == CellType.STRING) cell.getStringCellValue.trim.toInt else cell.getNumericCellValue().toInt
+            }
+            catch {
+              case e: Exception =>
+                0
+            }
+
+            val canales = Array(1, 2, 7, 9, 15)
+            val totales = Array(presencial, canalWeb, callCenter, kioskos, mobile)
+            val tipoTramite = tipoTramites.get(codigoPMG)
+            val factor = factores.get(codigoPMG)
+
+            if (tipoTramite.isEmpty) {
+              bitacora(recepcion.id, "ERROR", s"Tipo de trámite $codigoPMG no existe en la fila ${currentRow.getRowNum + 1}", "procesamiento")
+              errores = errores + 1
+              error = true
+            }
+            else {
+              val mascaraTipoTramite = RecepcionUtil.obtenerMascaraInstitucion(tipoTramite.get.institucionId)
+              if ((mascaraUsuario._3 != 0 && (mascaraTipoTramite._3 != mascaraUsuario._3)) ||
+                (mascaraUsuario._2 != 0 && (mascaraTipoTramite._2 != mascaraUsuario._2)) ||
+                (mascaraUsuario._1 != 0 && (mascaraTipoTramite._1 != mascaraUsuario._1))) {
                 error = true
-              }
-              else  {
-                val mascaraTipoTramite = RecepcionUtil.obtenerMascaraInstitucion(tipoTramite.get.institucionId)
-                if ((mascaraUsuario._3 != 0 && (mascaraTipoTramite._3 != mascaraUsuario._3)) ||
-                  (mascaraUsuario._2 != 0 && (mascaraTipoTramite._2 != mascaraUsuario._2)) ||
-                  (mascaraUsuario._1 != 0 && (mascaraTipoTramite._1 != mascaraUsuario._1))){
-                  error = true
-                  errores = errores + 1
-                  bitacora(recepcion.id, "ERROR", s"El usuario no está autorizado para procesar el trámite  $codigoPMG en la fila ${currentRow.getRowNum+1}", "procesamiento")
-                }
-              }
-              if (total != canalWeb + presencial + callCenter) {
-                bitacora(recepcion.id, "ERROR", s"El total para el trámite $codigoPMG, no coincide con la sumatoria de los canales en la fila ${currentRow.getRowNum+1}", "procesamiento")
                 errores = errores + 1
-                error = true
+                bitacora(recepcion.id, "ERROR", s"El usuario no está autorizado para procesar el trámite  $codigoPMG en la fila ${currentRow.getRowNum + 1}", "procesamiento")
               }
+            }
+            if (total != canalWeb + presencial + callCenter) {
+              bitacora(recepcion.id, "ERROR", s"El total para el trámite $codigoPMG, no coincide con la sumatoria de los canales en la fila ${currentRow.getRowNum + 1}", "procesamiento")
+              errores = errores + 1
+              error = true
+            }
 
 
             if (!error) {
@@ -391,43 +411,49 @@ class EjecutorExcelActor extends EjecutorBaseActor {
               val fechaFin = new DateTime(periodoFin)
 
               val meses = Months.monthsBetween(fechaMensual, fechaFin).getMonths
-              log.info("MESES "+meses)
+              log.info("MESES " + meses)
               val periodicidad = meses match {
                 case 0 => 4 /* MENSUAL */
                 case _ => 5 /* ANUAL */
               }
-              log.info("PERIODICIDAD "+periodicidad)
+              log.info("PERIODICIDAD " + periodicidad)
 
 
-
-
-                for (i <- 0 to 2) {
-                  val total = totales(i)
-                  val canal = canales(i)
-                  if (total >= 0)
-                   periodicidad match {
-                     case 4 => inserciones = inserciones + insertar(recepcion, tipoTramite.get, periodicidad,factor, fechaMensual, fechaAnual, canal,total)
-                     case 5 => for (i <- 1 to 12 ){
-                       val cuantos = if (i != 12) total / 12 else total/12 + total%12
-                       if (cuantos > 0)
-                          inserciones = inserciones + insertar(recepcion, tipoTramite.get, 4,factor, new DateTime(fechaAnual.withMonthOfYear(i)), fechaAnual, canal,cuantos)
-                     }
-                   }
-
+              for (i <- 0 to 2) {
+                val total = totales(i)
+                val canal = canales(i)
+                if (total >= 0)
+                  periodicidad match {
+                    case 4 => inserciones = inserciones + insertar(recepcion, tipoTramite.get, periodicidad, factor, fechaMensual, fechaAnual, canal, total)
+                    case 5 => for (i <- 1 to (meses +1)) {
+                      val cuantos = if (i != 12) total / 12 else total / 12 + total % 12
+                      if (cuantos > 0)
+                        inserciones = inserciones + insertar(recepcion, tipoTramite.get, 4, factor, new DateTime(fechaAnual.withMonthOfYear(i)), fechaAnual, canal, cuantos)
+                    }
                   }
-                }
 
-              lineas = lineas + 1
+              }
+            }
+
+            lineas = lineas + 1
 
           }
           catch {
             case e: Exception =>
-              log.error(e,"Error al procesar la linea")
+              log.error(e, "Error al procesar la linea")
               log.error("FIN???")
-              //iterator.next()
+            //iterator.next()
           }
 
+        }
       }
+      catch {
+        case e: Exception =>
+          bitacora(recepcion.id, "ERROR", s"Los títulos de las columnas no cumplen con el estándar ${e.getMessage}", "procesamiento")
+          errores = errores + 1
+        //iterator.next()
+      }
+
 
 
       log.info("Filas procesadas {} inserciones {}", lineas, inserciones)
@@ -510,6 +536,15 @@ class EjecutorMdsActor extends EjecutorBaseActor {
   }
 }
 
+class EjecutorInteroperabilidadActor extends EjecutorBaseActor {
+
+  def receive = {
+    case recepcion: Recepcion =>
+      val rec = sender()
+      log.info(recepcion.archivo)
+  }
+}
+
 
 class AdministradorActor extends Actor with ActorLogging {
   var ejecutores = IndexedSeq.empty[ActorRef]
@@ -550,11 +585,10 @@ abstract class ReceptorActor(receptor: Receptor) extends Actor with Entidad with
 
 
   override def receive = {
-    case recepcion@Recepcion(0, _, _, _, _, _, _) =>
+    case recepcion@Recepcion(0, _, _, _, _, _, _, _) =>
       log.info(recepcion.archivo)
-      val usuario = RecepcionUtil.obtenerUsuario(new java.io.File(recepcion.archivo))
-      val mascara = RecepcionUtil.obtenerMascaraUsuario(usuario)
-      ejecutarSQL("recepcion.insert.sql", Array(receptor.id, recepcion.archivo, usuario, mascara._1, mascara._2, mascara._3)).map(qr => {
+      val mascara = RecepcionUtil.obtenerMascaraUsuario(recepcion.usuarioId)
+      ejecutarSQL("recepcion.insert.sql", Array(receptor.id, recepcion.archivo, recepcion.usuarioId, mascara._1, mascara._2, mascara._3)).map(qr => {
         val id = qr.rows.get(0)("id").asInstanceOf[Int]
         recepcion.copy(id = id)
       }).pipeTo(self)
@@ -567,7 +601,7 @@ abstract class ReceptorActor(receptor: Receptor) extends Actor with Entidad with
   }
 
   def procesarArchivo(archivo: String) = {
-    val recepcion = Recepcion(0, receptor.id, null, "recepcionada", archivo, receptor.propiedades, Array[Byte]())
+    val recepcion = Recepcion(0, receptor.id, null, "recepcionada", archivo, receptor.propiedades,RecepcionUtil.obtenerUsuario(new File(archivo)) , Array[Byte]())
     self ! recepcion
   }
 }
@@ -667,13 +701,13 @@ class ReceptorMdsActor(receptor: Receptor) extends ReceptorActor(receptor) {
               entity.dataBytes.runFold(ByteString(""))(_ ++ _).foreach { body =>
                  log.info(body.utf8String)
                  val jsonRes =  body.utf8String.parseJson.asInstanceOf[JsObject]
-                 val token = jsonRes.fields("access_token").toString
+                 val token = jsonRes.fields("access_token").convertTo[String]
                 receptor.propiedades.get("url").foreach(url  => {
 
-                  val e = HttpEntity(contentType = ContentTypes.`application/json`, string = s)
                   val a = Authorization(OAuth2BearerToken(token))
 
-                  Http().singleRequest(HttpRequest(uri = url+"/"+dia, method = HttpMethods.GET, entity = e, headers = List(a)))
+
+                  Http().singleRequest(HttpRequest(uri = url+"/"+dia, method = HttpMethods.GET, headers = List(a)))
                     .onComplete{
                       case scala.util.Success(response) =>
                         response match {
@@ -716,4 +750,157 @@ class ReceptorMdsActor(receptor: Receptor) extends ReceptorActor(receptor) {
   }
 
 
+}
+
+
+
+class ReceptorInteroperabilidadActor(receptor: Receptor) extends ReceptorActor(receptor) {
+
+
+  case class InteropGET(fecha : Option[DateTime])
+  val sdt = new SimpleDateFormat("yyyyMMdd")
+
+  override def preStart = {
+    super.preStart()
+
+
+
+    receptor.propiedades.get("cron").foreach(cron => {
+      context.actorSelection("/user/crontab").resolveOne( 5 seconds).map(crontab => {
+        crontab ! CronTab.Schedule(self, InteropGET(None), CronExpression(cron))
+
+      })
+    })
+
+  }
+
+  override def receive = {
+    case m:InteropGET =>
+      val dia = sdt.format(new DateTime().toDate)
+      log.info("Recuperando información de logs de interoperabilidad del día "+dia)
+      pool.sendPreparedStatement("select distinct url from servicio", Array.emptyBooleanArray).map{qr =>
+        qr.rows.get.map(r=>r("url").asInstanceOf[String])
+      }.onComplete({
+        case scala.util.Success(urls)=>
+          urls.foreach(url  => {
+
+
+
+            Http().singleRequest(HttpRequest(uri = url, method = HttpMethods.GET))
+              .onComplete{
+                case scala.util.Success(response) =>
+                  response match {
+                    case HttpResponse(StatusCodes.OK, headers, entity, _) =>
+                      entity.dataBytes.runFold(ByteString(""))(_ ++ _).foreach { body =>
+                       val directorio = s"${receptor.propiedades.get("directorioProcesamiento").get}/${receptor.usuarioId}"
+                        Paths.get(directorio).toFile.mkdirs()
+                        val archivo =  directorio+ "/" + dia + ".txt"
+                        val pw = new PrintWriter(new File(archivo))
+                        pw.write(body.utf8String)
+                        pw.close
+                        procesarArchivo(archivo)
+                      }
+
+                    case resp@HttpResponse(code, _, _, _) =>
+                      log.info("Request failed, response code: " + code)
+                      resp.discardEntityBytes()
+                  }
+                case Failure(e)   => log.error(e.getMessage,e)
+              }
+          })
+        case Failure(e)=>
+          log.error(e, "Error al recuperar las urls de los servicios")
+      })
+
+
+
+    case ce:CronTab.Scheduled =>
+      log.info("Scheduled")
+
+    case e =>
+      super.receive(e)
+  }
+
+
+}
+
+case class Correo(de : String, para : Seq[String], asunto : String, texto : String )
+
+class CorreoActor extends Actor with ActorLogging {
+
+  def receive = {
+    case Some(correo : Correo) =>
+      val client_id = config.getString("receptor.correo.client_id")
+      val client_secret = config.getString("receptor.correo.client_secret")
+      val urlAutenticacion = config.getString("receptor.correo.autenticacion")
+      val urlEnviar = config.getString("receptor.correo.enviar")
+      val token_app = config.getString("receptor.correo.token_app")
+      val s = "{\"grant_type\":\"client_credentials\",\"client_id\":\""+client_id+"\",\"client_secret\":\""+client_secret+"\", \"scope\":\"sendmail\"}"
+      val e = HttpEntity(contentType = ContentTypes.`application/json`, string = s)
+      Http().singleRequest(HttpRequest(uri = urlAutenticacion, method = HttpMethods.POST, entity = e ))
+        .onComplete {
+          case scala.util.Success(response) =>
+            response match {
+              case HttpResponse(StatusCodes.OK, headers, entity, _) =>
+                entity.dataBytes.runFold(ByteString(""))(_ ++ _).foreach { body =>
+                  log.info(body.utf8String)
+                  val jsonRes =  body.utf8String.parseJson.asInstanceOf[JsObject]
+                  val token = jsonRes.fields("access_token").convertTo[String]
+
+
+                  val a = Authorization(OAuth2BearerToken(token))
+                  val para = correo.para.map("\""+_+"\"").mkString("[",",","]")
+                  val s = "{\"from\":\""+correo.de+"\", \"subject\":\""+Base64.getEncoder.encodeToString(correo.asunto.getBytes)+"\",\"body\":\""+Base64.getEncoder.encodeToString(correo.texto.getBytes)+"\",\"to\":"+para+",\"token_app\":\""+token_app+"\"}"
+                  log.info(s)
+                  val e = HttpEntity(contentType = ContentTypes.`application/json`, string = s)
+
+                    Http().singleRequest(HttpRequest(uri = urlEnviar, method = HttpMethods.POST, entity=e, headers = List(a)))
+                      .onComplete{
+                        case scala.util.Success(response) =>
+                          response match {
+                            case HttpResponse(StatusCodes.OK, headers, entity, _) =>
+                              entity.dataBytes.runFold(ByteString(""))(_ ++ _).foreach { body =>
+                                val jsonRes = body.utf8String.parseJson.asInstanceOf[JsObject]
+                                log.info(body.utf8String)
+                              }
+
+                            case resp@HttpResponse(code, _, _, _) =>
+                              log.info("Request failed, response code: " + code)
+                              resp.discardEntityBytes()
+                          }
+                        case Failure(e)   => log.error(e.getMessage,e)
+                      }
+
+
+                }
+              case resp @ HttpResponse(code, _, _, _) =>
+                log.info("Request failed, response code: " + code)
+                resp.discardEntityBytes()
+            }
+          case Failure(e)   => log.error(e.getMessage,e)
+        }
+
+
+    case recepcion : Recepcion=>
+      val sdt = new SimpleDateFormat("dd/MM/yyyy hh:mm:ss")
+      val de = config.getString("receptor.correo.de")
+      val asunto ="Recepcion de interacciones "+recepcion.id
+      val texto =""
+
+      val f = for {
+        para <- pool.sendPreparedStatement("select email from usuario where id = ?", Array(recepcion.usuarioId)).map(qr=>{
+        qr.rows.head.map(row=>row("email").asInstanceOf[String])
+        })
+
+        correo <- pool.sendPreparedStatement("select etapa, nivel, log  from recepcion_bitacora where recepcion_id=? order by id desc", Array(recepcion.id)).map(qr=>{
+        qr.rows.map(rs => {
+          rs.map(row => s"""En la etapa ${row("etapa").asInstanceOf[String]} ${row("nivel").asInstanceOf[String]} ${row("log").asInstanceOf[String]}""").mkString("\n")
+        }).map(Correo(de,para,asunto, _))
+      })
+      } yield correo
+
+      f.pipeTo(self)
+
+
+  }
 }
