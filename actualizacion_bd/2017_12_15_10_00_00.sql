@@ -265,7 +265,6 @@ create table dwh.transaccion_interoperabilidad  (
 
 insert into canal (id, nombre, descripcion, habilitado) values (15, 'MOBILE','MOBILE', true);
 INSERT INTO receptor VALUES (3, 'ReceptorMDS', NULL, 4, 4, 0, 0, false, '"url"=>"http://wsmds.ministeriodesarrollosocial.gob.cl/api/ws/getresumeninteracciones/2/pass", "cron"=>"0 2 */1 * *", "tipo"=>"mds", "ejecutor"=>"mds", "sufijoProcesando"=>"procesando", "urlAutenticacion"=>"http://wsmds.ministeriodesarrollosocial.gob.cl/api/auth/authorize-client", "directorioProcesamiento"=>"receptorMDSProcesamiento"', true, 1);
-INSERT INTO receptor VALUES (4, 'ReceptorInteroperabilidad', NULL, 4, 4, 0, 0, true, '"cron"=>"*/1 * * * *", "tipo"=>"interoperabilidad", "ejecutor"=>"interoperabilidad", "sufijoProcesando"=>"procesando", "directorioProcesamiento"=>"receptorInteroperabilidadProcesamiento"', true, 1);
-
-
+update receptor set propiedades = '﻿"tipo"=>"archivo", "ejecutor"=>"log", "generadores"=>"dwh.generar_interacciones;dwh.generar_tramites", "sufijoProcesando"=>"procesando", "directorioEntrada"=>"receptorDTEntrada", "directorioProcesamiento"=>"receptorDTProcesamiento"' where id = 1;
+update receptor set propiedades = '﻿"tipo"=>"archivo", "ejecutor"=>"excel", "sufijoProcesando"=>"procesando", "directorioEntrada"=>"receptorExcelEntrada", "directorioProcesamiento"=>"receptorExcelProcesamiento"' where id = 2;
 
