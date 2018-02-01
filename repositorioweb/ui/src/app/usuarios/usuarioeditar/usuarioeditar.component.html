@@ -73,7 +73,7 @@
                 <label for="nombres">Nombres</label>
                 <div class="input-group input-group-lg">
                   <span class="input-group-addon" id="sizing-addon1"><i class="fa fa-bars fa-fw"></i></span>
-                  <input type="text" class="form-control" id="nombres" name="nombres" #nombres="ngModel" placeholder="Ingresa Nombres" [(ngModel)]="item.nombres" aria-describedby="sizing-addon1" pattern="[a-zA-ZñÑáéíóúÁÉÍÓÚ0-9 ]*" noSpaces>
+                  <input type="text" class="form-control" id="nombres" name="nombres" #nombres="ngModel" placeholder="Ingresa Nombres" [(ngModel)]="item.nombres" aria-describedby="sizing-addon1" pattern="[a-zA-ZñÑáéíóúÁÉÍÓÚ0-9 -\/]*" noSpaces>
                 </div>
                 <p class="help-block" *ngIf="nombres.touched && !nombres.valid">Nombres es requerido, por favor ingrese nombres válidos</p>
               </div>
@@ -83,7 +83,7 @@
                 <label for="apellidos">Apellidos</label>
                 <div class="input-group input-group-lg">
                   <span class="input-group-addon" id="sizing-addon1"><i class="fa fa-bars fa-fw"></i></span>
-                  <input type="text" class="form-control" id="apellidos" name="apellidos" #apellidos="ngModel" placeholder="Ingresa Apellidos" [(ngModel)]="item.apellidos" aria-describedby="sizing-addon1" pattern="[a-zA-ZñÑáéíóúÁÉÍÓÚ0-9 ]*" noSpaces>
+                  <input type="text" class="form-control" id="apellidos" name="apellidos" #apellidos="ngModel" placeholder="Ingresa Apellidos" [(ngModel)]="item.apellidos" aria-describedby="sizing-addon1" pattern="[a-zA-ZñÑáéíóúÁÉÍÓÚ0-9 -\/]*" noSpaces>
                 </div>
                 <p class="help-block" *ngIf="apellidos.touched && !apellidos.valid">Apellidos es requerido, por favor ingrese apellidos válidos</p>
               </div>
@@ -112,7 +112,7 @@
                 <label for="cargo">Cargo</label>
                 <div class="input-group input-group-lg">
                   <span class="input-group-addon" id="sizing-addon1"><i class="fa fa-briefcase fa-fw"></i></span>
-                  <input type="text" class="form-control" id="cargo" name="cargo" placeholder="Ingresa Cargo" [(ngModel)]="item.cargo" aria-describedby="sizing-addon1" pattern="[a-zA-ZñÑáéíóúÁÉÍÓÚ0-9 ]*">
+                  <input type="text" class="form-control" id="cargo" name="cargo" placeholder="Ingresa Cargo" [(ngModel)]="item.cargo" aria-describedby="sizing-addon1" pattern="[a-zA-ZñÑáéíóúÁÉÍÓÚ0-9 -\/]*">
                 </div>
               </div>
             </div>
