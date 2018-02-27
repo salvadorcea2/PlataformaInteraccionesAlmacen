@@ -250,7 +250,7 @@ create table dwh.transaccion_interoperabilidad  (
     id serial not null constraint pk_log primary key,
     fecha_creacion timestamp with time zone DEFAULT now(),
     fecha_log timestamp with time zone,
-    host_remoto varchar(12),
+    host_remoto varchar(15),
     servicio varchar(100),
     metodo_http varchar(6),
     uri varchar(200),

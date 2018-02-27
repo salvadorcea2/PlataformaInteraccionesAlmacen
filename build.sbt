@@ -56,6 +56,7 @@ lazy val scalaLoggingVersion = "3.7.1"
 lazy val poiVersion = "3.16"
 lazy val akronVersion = "1.2"
 lazy val sprayVersion = "1.3.3"
+lazy val commonCompressVersion ="1.16.1"
 
 lazy val dependenciasComunes = Seq(
   "org.scala-lang" % "scala-library" % "2.12.2",
@@ -76,6 +77,7 @@ lazy val dependenciasReceptor = Seq(
   "com.typesafe.akka" %% "akka-http"   % akkaHttpVersion,
   "com.typesafe.akka" %% "akka-stream" % akkaVersion,
   "com.markatta" %% "akron" % akronVersion,
+  "org.apache.commons" % "commons-compress" % commonCompressVersion,
   "io.spray" %%  "spray-json" % sprayVersion,
   "org.apache.camel" % "camel-core" % apacheCamelVersion  % "compile" exclude("org.slf4j", "slf4j-api"),
   "org.apache.camel" % "camel-ftp" % apacheCamelVersion

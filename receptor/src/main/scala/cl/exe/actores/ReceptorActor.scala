@@ -4,7 +4,7 @@ import java.io.{File, FileInputStream, PrintWriter}
 import java.nio.file.Paths
 import java.sql.{Date, Timestamp}
 import java.text.SimpleDateFormat
-import java.util.Base64
+import java.util.{Base64, Calendar, GregorianCalendar}
 
 import akka.actor._
 import akka.cluster.{Cluster, Member, MemberStatus}
@@ -41,7 +41,10 @@ import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 import spray.json._
 import DefaultJsonProtocol._
+import akka.stream.scaladsl.FileIO
 import cl.exe.main.ReceptorMain.{materializer, system}
+import org.apache.commons.compress.archivers.{ArchiveException, ArchiveStreamFactory}
+import org.apache.commons.compress.archivers.tar.{TarArchiveEntry, TarArchiveInputStream}
 
 /*
 Agregar en la bitacora la info total del procesamiento
@@ -210,6 +213,8 @@ abstract class EjecutorBaseActor extends Actor with ActorLogging {
       receptor ! recepcion.copy(estado = estado)
       if (errores == 0)
         dwh ! (recepcion, receptor)
+      else
+        context.actorSelection("/user/correo").resolveOne(15 seconds).foreach(_ ! recepcion)
     })
   }
 }
@@ -538,10 +543,80 @@ class EjecutorMdsActor extends EjecutorBaseActor {
 
 class EjecutorInteroperabilidadActor extends EjecutorBaseActor {
 
+
+  /*
+  \[(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}-\d{2}:\d{2})\]\s(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\s([[:alnum:]|\.]+)\s\"([[:alnum:]]+)\s([[:print:]]+)\"\s(\d{3})\s\"([[:alnum:]]+)\s([[:print:]]+)\"
+   [2018-02-06T16:34:24-04:00] 42.252.95.184 apis.digital.gob.cl "GET /v2/instituciones?ordenar=nombre,desc" 200 "AM008 d85d6e2c-92e2-4623-b937-1288666529da"
+   */
+
   def receive = {
     case recepcion: Recepcion =>
       val rec = sender()
+      val sdf = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss")
       log.info(recepcion.archivo)
+      val tipoTramites = obtenerTramites()
+      val factores = obtenerFactores()
+      insertarFactores(recepcion)
+      val file = new File(recepcion.archivo)
+      val usuario = RecepcionUtil.obtenerUsuario(file)
+      val mascaraUsuario = RecepcionUtil.obtenerMascaraUsuario(usuario)
+      var lineas = 0
+      var inserciones = 0
+      var errores = 0
+      var elementos = 0
+      val patron ="^\\[(\\d{4}\\-\\d{2}\\-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\-\\d{2}:\\d{2})\\]\\s(\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3})\\s(.*)\\s\\\"(\\w+)\\s(.*)\\\"\\s(\\d{3})\\s\\\"(\\w{5})\\s(.*)\\\"".r
+        try {
+        val buffer = Source.fromFile(recepcion.archivo)
+        for (linea <- buffer.getLines()) {
+          lineas = lineas + 1
+          val it = patron.findAllIn(linea).matchData
+          if (it.isEmpty){
+            errores = errores + 1
+            log.error("Error en la línea : {}. Error {} no calza con la expresión regular", lineas, linea)
+            bitacora(recepcion.id, "ERROR", s"Error en la línea : $lineas. Error $linea no calza con la expresión regular", "procesamiento")
+           }
+          else
+           it foreach {
+            m => {
+              try {
+                val fecha = sdf.parse(m.group(1).replace('T', ' ').substring(0, 18))
+                val hostRemoto = m.group(2)
+                val servicio = m.group(3)
+                val metodo = m.group(4)
+                val urlRelativa = m.group(5)
+                val status = m.group(6)
+                val origen = m.group(7)
+                val transaccion = m.group(8)
+
+                /*INSERT INTO dwh.transaccion_interoperabilidad(
+ fecha_log, host_remoto, servicio, metodo_http, uri, status_http, codigo_institucion_consumidora, id_transaccion, servicio_id, institucion_id)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)*/
+
+                Await.result(ejecutarSQL("interoperabilidad.insert.sql", Array(fecha, hostRemoto, servicio, metodo, servicio + "/" + urlRelativa, status, origen, transaccion, 1, 1)), 30 seconds)
+                inserciones = inserciones + 1
+              }
+              catch {
+                case e : Exception =>
+                  errores = errores + 1
+                  bitacora(recepcion.id, "ERROR", s"Error en la línea : $lineas. Error ${e.getMessage}", "procesamiento")
+              }
+
+
+
+            }
+          }
+
+        }
+      }
+      catch {
+        case e: Exception =>
+          errores = errores + 1
+          log.error("Error en el archivo {}", e.getMessage)
+          bitacora(recepcion.id, "ERROR", s"Error en el archivo : ${e.getMessage}", "procesamiento")
+      }
+      log.info("Lineas procesados {} inserciones {}", lineas, inserciones)
+      bitacora(recepcion.id, "INFO", s"Líneas procesadas $lineas inserciones ${inserciones}", "procesada")
+      procesamientoCompleto(rec, errores, recepcion)
   }
 }
 
@@ -758,7 +833,73 @@ class ReceptorInteroperabilidadActor(receptor: Receptor) extends ReceptorActor(r
 
 
   case class InteropGET(fecha : Option[DateTime])
-  val sdt = new SimpleDateFormat("yyyyMMdd")
+  val sdt = new SimpleDateFormat("yyyy-MM-dd")
+
+  import org.apache.poi.util.IOUtils
+  import java.io.FileInputStream
+  import java.io.FileNotFoundException
+  import java.io.FileOutputStream
+  import java.io.IOException
+  import java.io.InputStream
+  import java.io.OutputStream
+  import java.util.zip.GZIPInputStream
+
+  @throws[FileNotFoundException]
+  @throws[IOException]
+  @throws[ArchiveException]
+  private def unTar(inputFile: File, outputDir: File) = {
+    log.info(String.format("Untaring %s to dir %s.", inputFile.getAbsolutePath, outputDir.getAbsolutePath))
+    var untaredFiles = new mutable.ArrayBuffer[File]()
+    val is = new FileInputStream(inputFile)
+    val debInputStream = new ArchiveStreamFactory().createArchiveInputStream("tar", is).asInstanceOf[TarArchiveInputStream]
+    var entry : TarArchiveEntry = debInputStream.getNextEntry.asInstanceOf[TarArchiveEntry]
+    while (entry != null)
+     {
+      val outputFile = new File(outputDir, entry.getName)
+      if (entry.isDirectory) {
+        log.info(String.format("Attempting to write output directory %s.", outputFile.getAbsolutePath))
+        if (!outputFile.exists) {
+          log.info(String.format("Attempting to create output directory %s.", outputFile.getAbsolutePath))
+          if (!outputFile.mkdirs) throw new IllegalStateException(String.format("Couldn't create directory %s.", outputFile.getAbsolutePath))
+        }
+      }
+      else {
+        log.info(String.format("Creating output file %s.", outputFile.getAbsolutePath))
+        val outputFileStream = new FileOutputStream(outputFile)
+        IOUtils.copy(debInputStream, outputFileStream)
+        outputFileStream.close()
+      }
+      untaredFiles += outputFile
+      entry = debInputStream.getNextEntry.asInstanceOf[TarArchiveEntry]
+    }
+    debInputStream.close
+    untaredFiles
+  }
+
+  /**
+    * Ungzip an input file into an output file.
+    * <p>
+    * The output file is created in the output folder, having the same name
+    * as the input file, minus the '.gz' extension.
+    *
+    * @param inputFile the input .gz file
+    * @param outputDir the output directory file.
+    * @throws IOException
+    * @throws FileNotFoundException
+    * @return The { @File } with the ungzipped content.
+    */
+  @throws[FileNotFoundException]
+  @throws[IOException]
+  private def unGzip(inputFile: File, outputDir: File) = {
+    log.info(String.format("Ungzipping %s to dir %s.", inputFile.getAbsolutePath, outputDir.getAbsolutePath))
+    val outputFile = new File(outputDir, inputFile.getName.substring(0, inputFile.getName.length - 3))
+    val in = new GZIPInputStream(new FileInputStream(inputFile))
+    val out = new FileOutputStream(outputFile)
+    IOUtils.copy(in, out)
+    in.close()
+    out.close()
+    outputFile
+  }
 
   override def preStart = {
     super.preStart()
@@ -776,40 +917,41 @@ class ReceptorInteroperabilidadActor(receptor: Receptor) extends ReceptorActor(r
 
   override def receive = {
     case m:InteropGET =>
-      val dia = sdt.format(new DateTime().toDate)
+      val calendar = new GregorianCalendar()
+      calendar.add(Calendar.DAY_OF_MONTH,-1)
+      val dia = sdt.format(calendar.getTime)
       log.info("Recuperando información de logs de interoperabilidad del día "+dia)
-      pool.sendPreparedStatement("select distinct url from servicio", Array.emptyBooleanArray).map{qr =>
-        qr.rows.get.map(r=>r("url").asInstanceOf[String])
-      }.onComplete({
-        case scala.util.Success(urls)=>
-          urls.foreach(url  => {
+      receptor.propiedades.get("url").foreach(url  => {
 
 
-
-            Http().singleRequest(HttpRequest(uri = url, method = HttpMethods.GET))
-              .onComplete{
-                case scala.util.Success(response) =>
-                  response match {
-                    case HttpResponse(StatusCodes.OK, headers, entity, _) =>
-                      entity.dataBytes.runFold(ByteString(""))(_ ++ _).foreach { body =>
-                       val directorio = s"${receptor.propiedades.get("directorioProcesamiento").get}/${receptor.usuarioId}"
-                        Paths.get(directorio).toFile.mkdirs()
-                        val archivo =  directorio+ "/" + dia + ".txt"
-                        val pw = new PrintWriter(new File(archivo))
-                        pw.write(body.utf8String)
-                        pw.close
-                        procesarArchivo(archivo)
+        Http().singleRequest(HttpRequest(uri = url + "?inicio=" + dia + "&fin=" + dia, method = HttpMethods.GET))
+          .onComplete {
+            case scala.util.Success(response) =>
+              response match {
+                case HttpResponse(StatusCodes.OK, headers, entity, _) =>
+                  val directorio = s"${receptor.propiedades.get("directorioProcesamiento").get}/${receptor.usuarioId}"
+                  val archivo =  dia + ".tar.gz"
+                  Paths.get(directorio).toFile.mkdirs()
+                  entity.dataBytes.runWith(FileIO.toFile(new File(directorio, archivo))).onComplete({
+                    case scala.util.Success(r) =>
+                      if (r.wasSuccessful) {
+                        val tarFile = unGzip(new File(directorio, archivo), new File(directorio))
+                        val archivos = unTar(tarFile, new File(directorio))
+                        for (a <- archivos)
+                          procesarArchivo(a.getAbsolutePath)
                       }
 
-                    case resp@HttpResponse(code, _, _, _) =>
-                      log.info("Request failed, response code: " + code)
-                      resp.discardEntityBytes()
-                  }
-                case Failure(e)   => log.error(e.getMessage,e)
+                    case Failure(e) =>
+                      log.error(e, e.getMessage)
+
+                  })
+
+                case resp@HttpResponse(code, _, _, _) =>
+                  log.info("Request failed, response code: " + code)
+                  resp.discardEntityBytes()
               }
-          })
-        case Failure(e)=>
-          log.error(e, "Error al recuperar las urls de los servicios")
+            case Failure(e) => log.error(e.getMessage, e)
+          }
       })
 
 
