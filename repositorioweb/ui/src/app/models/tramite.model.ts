@@ -10,6 +10,7 @@ export class Tramite {
   public clave_unica: boolean = false;
   public costo: number;
   public codigo_simple: string = '';
+  public tiempo_espera: number;
   public categoria_id: number;
   public nivel_digitalizacion_id: number;
   public presencialidad: boolean = false;
