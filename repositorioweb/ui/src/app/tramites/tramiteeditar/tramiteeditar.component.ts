@@ -169,7 +169,8 @@ export class TramiteeditarComponent implements OnInit {
     this.item.periodicidad_id = +this.item.periodicidad_id;
     this.item.categoria_id = +this.item.categoria_id;
     this.item.nivel_digitalizacion_id = +this.item.nivel_digitalizacion_id;
-    this.item.costo = typeof(this.item.costo) === 'undefined' ? 0 : +this.item.costo;
+    this.item.tiempo_espera = typeof(this.item.tiempo_espera) === 'undefined' || this.item.tiempo_espera === null ? 0 : +this.item.tiempo_espera;
+    this.item.costo = typeof(this.item.costo) === 'undefined' || this.item.costo === null ? 0 : +this.item.costo;
 
     if ( typeof this._component_entidad_id === 'undefined' || this._component_entidad_id === null ) {
       this._apiService.crear(this._component_entidad, this.item)
