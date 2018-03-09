@@ -34,7 +34,7 @@ export class ReceptoresComponent implements OnInit {
   public modalRef: BsModalRef;
 
   getListas() {
-    this._apiService.getLista('mantenedor/canal')
+    this._apiService.getLista('mantenedor/canal_transmision')
       .subscribe(
         (data: any[]) => {
           this._lista_canales = [];
