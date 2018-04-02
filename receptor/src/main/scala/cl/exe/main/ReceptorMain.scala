@@ -43,13 +43,21 @@ object ReceptorMain extends App with LazyLogging {
 
   def crearTodos(): Unit = {
     ReceptorDAO.obtenerTodos.map(_.map(_.foreach(receptor => {
-      ReceptorActor(system, receptor)
+      logger.info(receptor.nombre+" habilitado "+receptor.habilitado)
+      if (receptor.habilitado) {
+        logger.info("Creando receptor para "+receptor.nombre)
+        ReceptorActor(system, receptor)
+      }
     })))
   }
 
   def crearReceptor(idReceptor: Integer): Unit = {
     ReceptorDAO.obtenerPorId(idReceptor).map(_.map(receptor => {
-      ReceptorActor(system, receptor)
+      logger.info(receptor.nombre+" habilitado "+receptor.habilitado)
+      if (receptor.habilitado) {
+        logger.info("Creando receptor para "+receptor.nombre)
+        ReceptorActor(system, receptor)
+      }
     }))
   }
 

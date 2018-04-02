@@ -4,6 +4,7 @@ import java.io.{File, FileInputStream, PrintWriter}
 import java.nio.file.Paths
 import java.sql.{Date, Timestamp}
 import java.text.SimpleDateFormat
+import java.time.ZonedDateTime
 import java.util.{Base64, Calendar, GregorianCalendar}
 
 import akka.actor._
@@ -43,6 +44,7 @@ import spray.json._
 import DefaultJsonProtocol._
 import akka.stream.scaladsl.FileIO
 import cl.exe.main.ReceptorMain.{materializer, system}
+import cl.exe.usabilla.Signer
 import org.apache.commons.compress.archivers.{ArchiveException, ArchiveStreamFactory}
 import org.apache.commons.compress.archivers.tar.{TarArchiveEntry, TarArchiveInputStream}
 
@@ -621,6 +623,174 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)*/
 }
 
 
+
+
+class EjecutorUsabillaActor extends EjecutorBaseActor {
+
+  def insertarUsabilla(fecha : DateTime, buttonId : String, categoria : String, ficha : Int, rating : Double ): Unit= {
+
+
+    var inserciones = 0
+    val fechaSemana = sdf.format(fecha.toDate).toInt
+    val sql =  s"select * from dwh.insertar_usabilla_semanal($fechaSemana,'$buttonId','$categoria',$ficha, $rating)"
+
+    var futureTramite: Future[QueryResult] = pool.sendQuery(sql)
+    Await.result(futureTramite.map(qr => qr), 30 seconds)
+  }
+
+
+  def receive = {
+    case recepcion: Recepcion =>
+      val rec = sender()
+      log.info(recepcion.archivo)
+      val file = new File(recepcion.archivo)
+      val usuario = RecepcionUtil.obtenerUsuario(file)
+      val mascaraUsuario = RecepcionUtil.obtenerMascaraUsuario(usuario)
+      val sdf2 = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS")
+
+      var elementos = 0
+      var inserciones = 0
+      var errores = 0
+      val fecha = new DateTime(sdf.parse(file.getName.split("\\.")(0)))
+      log.info("Procesando fecha "+fecha.toString)
+
+
+      try {
+        val jsonVal = Source.fromFile(recepcion.archivo).mkString.parseJson
+        val contenido = jsonVal.asJsObject.fields("items").asInstanceOf[JsArray]
+        val ratings = new mutable.HashMap[String, mutable.HashMap[String, mutable.HashMap[Int, Double]]]()
+        val cuantos = new mutable.HashMap[String, mutable.HashMap[String, mutable.HashMap[Int, Int]]]()
+
+        for(elemento <- contenido.elements){
+          try {
+            elementos = elementos + 1
+            val buttonId = elemento.asJsObject.fields("buttonId").convertTo[String]
+            val url = elemento.asJsObject.fields("url").convertTo[String].substring(32).toUpperCase //Sacamos https://www.chileatiende.gob.cl/
+            val rating = elemento.asJsObject.fields("rating").convertTo[BigDecimal].toDouble
+            var ficha = 0
+            val fechaRegistro = new DateTime(sdf2.parse(elemento.asJsObject.fields("date").convertTo[String].substring(0, elemento.asJsObject.fields("date").convertTo[String].length-2)))
+
+            if (Days.daysBetween(fecha, fechaRegistro).getDays() < 7) {
+              /*
+HOME
+https://www.chileatiende.gob.cl/
+https://www.chileatiende.gob.cl/#
+
+FICHAS
+https://www.chileatiende.gob.cl/fichas
+
+BUSCADOR
+https://www.chileatiende.gob.cl/buscar
+
+CENTRO DE AYUDA
+https:    www.chileatiende.gob.cl/ayuda
+https:    www.chileatiende.gob.cl/contacto
+https:    www.chileatiende.gob.cl/instituciones
+https:    www.chileatiende.gob.cl/que-es-chileatiende
+https:    www.chileatiende.gob.cl/politica-de-privacidad
+
+OTROS
+https:    www.chileatiende.gob.cl/api
+https:    www.chileatiende.gob.cl/mi-chileatiende
+https:    www.chileatiende.gob.cl/exterior
+https:    www.chileatiende.gob.cl/mujer
+             */
+              val categoria = url match {
+                case u: String if u.startsWith("FICHAS") =>
+                  ficha = url.substring(url.indexOf("/") + 1).substring(0, url.indexOf("-") - url.indexOf("/") - 1).toInt
+                  "FICHA"
+
+                case u: String if u.startsWith("BUSCAR") =>
+                  "BUSCADOR"
+                case u: String if u.startsWith("AYUDA") =>
+                  "CENTRO DE AYUDA"
+                case u: String if u.startsWith("CONTACTO") =>
+                  "CENTRO DE AYUDA"
+                case u: String if u.startsWith("INSTITUCIONES") =>
+                  "CENTRO DE AYUDA"
+                case u: String if u.startsWith("QUE-ES-CHILEATIENDE") =>
+                  "CENTRO DE AYUDA"
+                case u: String if u.startsWith("POLITICA-DE-PRIVACIDAD") =>
+                  "CENTRO DE AYUDA"
+                case u: String if u.startsWith("API") =>
+                  "OTROS"
+                case u: String if u.startsWith("MI-CHILE_ANTIENDE") =>
+                  "OTROS"
+                case u: String if u.startsWith("EXTERIOR") =>
+                  "OTROS"
+                case u: String if u.startsWith("MUJER") =>
+                  "OTROS"
+                case _ => "HOME"
+              }
+
+
+              if (!ratings.contains(buttonId)) {
+                val c = new mutable.HashMap[String, mutable.HashMap[Int, Double]]()
+                val cc = new mutable.HashMap[String, mutable.HashMap[Int, Int]]()
+                ratings += (buttonId -> c)
+                cuantos += (buttonId -> cc)
+              }
+              val categorias = ratings(buttonId)
+              val ccategorias = cuantos(buttonId)
+
+              if (!categorias.contains(categoria)) {
+                val f = new mutable.HashMap[Int, Double]()
+                val fc = new mutable.HashMap[Int, Int]()
+                categorias += (categoria -> f)
+                ccategorias += (categoria -> fc)
+              }
+              val fichas = categorias(categoria)
+              val cfichas = ccategorias(categoria)
+              if (!fichas.contains(ficha)) {
+                fichas += (ficha -> rating)
+                cfichas += (ficha -> 1)
+              }
+              else {
+                val r = fichas(ficha)
+                val rc = cfichas(ficha)
+                fichas += (ficha -> (rating + r))
+                cfichas += (ficha -> (1 + rc))
+              }
+            }
+            else
+              log.info(fechaRegistro.toString)
+
+
+
+
+
+          }
+          catch {
+            case e: Exception =>
+              errores = errores + 1
+              bitacora(recepcion.id, "ERROR", s"Error en el contenido $elementos del JSON: ${e.getMessage}", "procesamiento")
+          }
+
+        }
+
+         for (buttonId <- ratings.keySet){
+          for (categoria <- ratings(buttonId).keySet){
+            for (ficha <- ratings(buttonId)(categoria).keySet){
+              insertarUsabilla(fecha, buttonId, categoria, ficha, ratings(buttonId)(categoria)(ficha) / cuantos(buttonId)(categoria)(ficha))
+              inserciones = inserciones + 1
+            }
+          }
+        }
+
+
+      }
+      catch {
+        case e: Exception =>
+          errores = errores + 1
+          bitacora(recepcion.id, "ERROR", s"Error en el JSON: ${e.getMessage}", "procesamiento")
+      }
+      log.info("Elementos procesados {} inserciones {}", elementos, inserciones)
+      bitacora(recepcion.id, "INFO", s"Elementos procesados $elementos inserciones ${inserciones}", "procesada")
+      procesamientoCompleto(rec, errores, recepcion)
+  }
+}
+
+
 class AdministradorActor extends Actor with ActorLogging {
   var ejecutores = IndexedSeq.empty[ActorRef]
   var turno = 0
@@ -732,13 +902,19 @@ class ReceptorMdsActor(receptor: Receptor) extends ReceptorActor(receptor) {
   override def preStart = {
     super.preStart()
 
-    if (config.getBoolean("receptor.recuperarTramiteMDS")) {
-      val fechaInicio = new DateTime(sdt.parse(config.getString("receptor.inicioTramiteMDS")))
-      system.scheduler.scheduleOnce(
-        5000 milliseconds) {
-        self ! MDSGet(Some(fechaInicio))
+    receptor.propiedades.get("recuperarTramiteMDS").foreach(t => {
+      if (t.toBoolean){
+        receptor.propiedades.get("inicioTramiteMDS").foreach(f => {
+          val fechaInicio = new DateTime(sdt.parse(f))
+          system.scheduler.scheduleOnce(
+            5000 milliseconds) {
+            self ! MDSGet(Some(fechaInicio))
+          }
+        })
+
+      }
     }
-    }
+   )
 
      receptor.propiedades.get("cron").foreach(cron => {
       context.actorSelection("/user/crontab").resolveOne( 5 seconds).map(crontab => {
@@ -819,6 +995,93 @@ class ReceptorMdsActor(receptor: Receptor) extends ReceptorActor(receptor) {
 
     case ce:CronTab.Scheduled =>
        log.info("Scheduled")
+
+    case e =>
+      super.receive(e)
+  }
+
+
+}
+
+class ReceptorUsabillaActor(receptor: Receptor) extends ReceptorActor(receptor) {
+
+
+  case class UsabillaGET(fecha : Option[DateTime])
+  val sdt = new SimpleDateFormat("yyyyMMdd")
+
+  override def preStart = {
+    super.preStart()
+
+    receptor.propiedades.get("recuperarUsabilla").foreach(t=>{
+      if (t.toBoolean) {
+         receptor.propiedades.get("inicioUsabilla").foreach(f => {val fechas =f.split(";")
+        var i = 1
+        for (fecha <- fechas) {
+          val fechaInicio = new DateTime(sdt.parse(fecha))
+          system.scheduler.scheduleOnce(
+            (5000 * i) milliseconds) {
+            self ! UsabillaGET(Some(fechaInicio))
+          }
+          i = i + 1
+        }
+      })
+      }
+    })
+
+    receptor.propiedades.get("cron").foreach(cron => {
+      context.actorSelection("/user/crontab").resolveOne( 5 seconds).map(crontab => {
+        crontab ! CronTab.Schedule(self, UsabillaGET(None), CronExpression(cron))
+
+      })
+    })
+
+  }
+
+  override def receive = {
+    case m:UsabillaGET =>
+      val runDate = m.fecha.getOrElse(new DateTime().minusDays(7))
+      val dia = sdt.format(runDate.toDate)
+      val date = ZonedDateTime.parse(s"${dia}T000000Z", Signer.dateFormatter)
+      receptor.propiedades.get("buttons").foreach(b => {
+        val buttons = b.split(";")
+        for (button <- buttons) {
+          val url = "https://data.usabilla.com/live/website/button/"+button+"/feedback?limit=10000&since=" + date.toInstant.toEpochMilli
+
+          //logger.info(date.toString)
+          var request = HttpRequest(uri = url, method = HttpMethods.GET)
+          request = Signer.signedRequest(request, "4b1e8b6a6987f101", "38db296fe827c2e1124a") //,date)
+
+          Http().singleRequest(request)
+            .onComplete {
+              case scala.util.Success(response) =>
+                response match {
+                  case HttpResponse(StatusCodes.OK, headers, entity, _) =>
+                    entity.dataBytes.runFold(ByteString(""))(_ ++ _).foreach { body =>
+                      val directorio = s"${receptor.propiedades.get("directorioProcesamiento").get}/${receptor.usuarioId}"
+                      Paths.get(directorio).toFile.mkdirs()
+                      val archivo = directorio + "/" + dia + ".json"
+                      val pw = new PrintWriter(new File(archivo))
+                      pw.write(body.utf8String)
+                      pw.close
+                      procesarArchivo(archivo)
+                    }
+
+                  case resp@HttpResponse(code, headers, entity, _) =>
+                    log.info("Request failed, response code: " + code)
+                    entity.dataBytes.runFold(ByteString(""))(_ ++ _).foreach { body =>
+                      val jsonRes = body.utf8String.parseJson.asInstanceOf[JsObject]
+                      log.info(body.utf8String)
+                    }
+
+                }
+              case Failure(e) => log.error(e.getMessage, e)
+            }
+        }
+      })
+
+
+    case ce:CronTab.Scheduled =>
+      log.info("Scheduled")
 
     case e =>
       super.receive(e)

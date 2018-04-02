@@ -220,8 +220,8 @@ class TipoTramiteController @Inject()(cc: ControllerComponents)(implicit config:
           parametros += presencialidad
           parametros += barreras_normativas
           parametros += fuente
-          parametros += habilitado
           parametros += tiempo_espera
+          parametros += habilitado
           parametros += id
           pool.sendPreparedStatement(sql, parametros).map(qr => {
             Ok(toRespuesta(toJson(qr.rows, qr.rows.get.columnNames)))
