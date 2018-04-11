@@ -82,11 +82,16 @@ object Signer extends LazyLogging {
   def signedRequest(request: HttpRequest, accessKey : String, secretKey : String, date: ZonedDateTime = ZonedDateTime.now(ZoneOffset.UTC)) : HttpRequest = {
 
 
-      val headersToAdd = Vector(RawHeader("date", date.format(dateFormatterRFC)),RawHeader("host", "data.usabilla.com"))
+      val headersToAdd = Vector(RawHeader("x-usbl-date", date.format(dateFormatter)),RawHeader("host", "data.usabilla.com"))
       val reqWithHeaders = request.withHeaders(request.headers ++ headersToAdd)
       val cr = CanonicalRequest.from(reqWithHeaders)
       val authHeader = authorizationHeader("USBL1-HMAC-SHA256", accessKey, secretKey, date, cr)
-      reqWithHeaders.withHeaders(reqWithHeaders.headers :+ authHeader)
+      val req = reqWithHeaders.withHeaders(reqWithHeaders.headers :+ authHeader)
+      logger.info("****USABILLA REQUEST****")
+      logger.info(req.toString())
+      logger.info("****END USABILLA REQUEST****")
+      req
+
 
   }
 
@@ -113,14 +118,14 @@ object Signer extends LazyLogging {
   def stringToSign(algorithm: String,
                    requestDate: ZonedDateTime,
                    canonicalRequest: CanonicalRequest): String = {
-    logger.info("**************")
+    logger.info("**** CANONINCAL STRING *****")
     logger.info(canonicalRequest.canonicalString)
 
     val hashedRequest =  DigestUtils.sha256Hex(canonicalRequest.canonicalString.getBytes())
     val date = requestDate.format(dateFormatter)
     val scope = requestDate.format(dateFormatterShort)+"/usbl1_request"
     val s = s"$algorithm\n$date\n$scope\n$hashedRequest"
-    logger.info("**************")
+    logger.info("**** STRING TO SIGN *****")
     logger.info(s)
     s
   }

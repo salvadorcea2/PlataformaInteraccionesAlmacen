@@ -19,6 +19,6 @@ create table dwh.transaccion_interoperabilidad  (
   constraint fk_transaccion_interoperabilidad_institucion foreign key (institucion_id) references institucion(id)
 );
 
-﻿alter table tipo_tramite add column tiempo_espera integer;
+alter table tipo_tramite add column tiempo_espera integer;
 
 
