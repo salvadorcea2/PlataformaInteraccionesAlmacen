@@ -1,4 +1,4 @@
-INSERT INTO receptor VALUES (5, 'ReceptorUsabilla', NULL, 4, 4, 0, 0, false, '"cron"=>"0 10 * * *", "tipo"=>"usabilla", "buttons"=>"996ca51785d1;a89e99cb53ec", "ejecutor"=>"usabilla", "sufijoProcesando"=>"procesando", "recuperarUsabilla"=>"true", "directorioProcesamiento"=>"receptorUsabillaProcesamiento"', true, 1);
+INSERT INTO receptor VALUES (5, 'ReceptorUsabilla', NULL, 4, 4, 0, 0, false, '"cron"=>"0 12 * * *", "tipo"=>"usabilla", "buttons"=>"996ca51785d1;a89e99cb53ec", "ejecutor"=>"usabilla", "sufijoProcesando"=>"procesando", "recuperarUsabilla"=>"true", "directorioProcesamiento"=>"receptorUsabillaProcesamiento", "inicioUsabilla"=>"20180310"', true, 1);
 
 
 CREATE TABLE dwh.usabilla_diaria
